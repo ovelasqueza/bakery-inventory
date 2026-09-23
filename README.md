@@ -1,8 +1,8 @@
-# 🥖 Inventario Panadería
+#  Inventario Panadería
 
 Sistema de gestión de inventario para panadería desarrollado con Next.js 14, Tailwind CSS y Supabase.
 
-## ✨ Características
+## Características
 
 - **Gestión de Productos (CRUD completo)**
   - Crear, editar y eliminar productos
@@ -23,7 +23,7 @@ Sistema de gestión de inventario para panadería desarrollado con Next.js 14, T
   - Componentes táctiles amigables
   - Soporte PWA (instalar como app)
 
-## 🚀 Instalación
+##  Instalación
 
 ### 1. Clonar e instalar dependencias
 
@@ -69,7 +69,7 @@ Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 2. En Chrome/Safari, selecciona "Agregar a pantalla de inicio"
 3. La app se instalará como una aplicación nativa
 
-## 🗃️ Estructura de la Base de Datos
+##  Estructura de la Base de Datos
 
 ### Tablas principales
 
@@ -113,7 +113,7 @@ bakery-inventory/
     └── manifest.json           # Configuración PWA
 ```
 
-## 🛠️ Scripts disponibles
+##  Scripts disponibles
 
 ```bash
 npm run dev      # Desarrollo con hot reload
@@ -122,7 +122,7 @@ npm run start    # Iniciar servidor de producción
 npm run lint     # Ejecutar ESLint
 ```
 
-## 🔒 Seguridad para Producción
+##  Seguridad para Producción
 
 Antes de desplegar a producción, actualiza las políticas RLS en Supabase:
 
@@ -130,6 +130,6 @@ Antes de desplegar a producción, actualiza las políticas RLS en Supabase:
 2. Modifica las políticas en `supabase/schema.sql` para restringir acceso
 3. Considera añadir autenticación con Supabase Auth
 
-## 📝 Licencia
+##  Licencia
 
 Proyecto privado para uso interno.
