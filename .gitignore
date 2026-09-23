@@ -29,6 +29,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# SQL con contraseñas (no subir a GitHub)
+supabase/set-password.sql
+
 # vercel
 .vercel
 
