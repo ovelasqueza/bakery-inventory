@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#ed751a"/>
+  <g fill="white">
+    <!-- Pan/Bread icon -->
+    <ellipse cx="256" cy="280" rx="160" ry="100"/>
+    <ellipse cx="256" cy="260" rx="140" ry="80" fill="#ed751a"/>
+    <ellipse cx="256" cy="270" rx="130" ry="70" fill="white"/>
+    <!-- Steam lines -->
+    <path d="M180 160 Q190 140 180 120" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M256 150 Q266 130 256 110" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <path d="M332 160 Q342 140 332 120" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
