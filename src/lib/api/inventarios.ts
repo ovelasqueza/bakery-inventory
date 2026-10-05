@@ -7,6 +7,8 @@ import type {
   InventarioDetalleInsert,
   InventarioCompleto,
   ProductoInventario,
+  InventarioFactura,
+  InventarioFacturaInsert,
 } from '@/types/database';
 import { getProductos } from './productos';
 
@@ -25,7 +27,7 @@ export async function getInventarios(): Promise<Inventario[]> {
   return data;
 }
 
-// Obtener un inventario por ID con sus detalles
+// Obtener un inventario por ID con sus detalles y facturas
 export async function getInventarioById(id: string): Promise<InventarioCompleto | null> {
   const { data, error } = await supabase
     .from('inventarios')
@@ -37,6 +39,9 @@ export async function getInventarioById(id: string): Promise<InventarioCompleto 
           id,
           nombre
         )
+      ),
+      inventario_facturas (
+        *
       )
     `)
     .eq('id', id)
@@ -65,6 +70,9 @@ export async function getInventarioByFecha(fecha: string): Promise<InventarioCom
           id,
           nombre
         )
+      ),
+      inventario_facturas (
+        *
       )
     `)
     .eq('fecha_inventario', fecha)
@@ -178,11 +186,8 @@ export async function saveInventarioDetalles(
       .delete()
       .eq('inventario_id', inventarioId);
     
-    // Actualizar total a 0
-    await supabase
-      .from('inventarios')
-      .update({ total_general: 0 })
-      .eq('id', inventarioId);
+    // Actualizar total considerando facturas
+    await actualizarTotalInventarioConFacturas(inventarioId);
     return;
   }
 
@@ -202,13 +207,8 @@ export async function saveInventarioDetalles(
     throw new Error('No se pudieron guardar los detalles del inventario');
   }
 
-  // Calcular el total usando los subtotales ya calculados (que incluyen descuentos)
-  const totalGeneral = detallesAGuardar.reduce((acc, d) => acc + d.subtotal, 0);
-
-  await supabase
-    .from('inventarios')
-    .update({ total_general: totalGeneral })
-    .eq('id', inventarioId);
+  // Actualizar total considerando facturas
+  await actualizarTotalInventarioConFacturas(inventarioId);
 }
 
 // Eliminar un detalle de inventario
@@ -320,4 +320,125 @@ export async function finalizarInventario(id: string): Promise<Inventario> {
 // Reabrir un inventario completado para edición
 export async function reabrirInventario(id: string): Promise<Inventario> {
   return updateInventario(id, { estado: 'en_proceso' });
+}
+
+// ============================================
+// FUNCIONES PARA FACTURAS DE INVENTARIO
+// ============================================
+
+// Obtener facturas de un inventario
+export async function getFacturasInventario(inventarioId: string): Promise<InventarioFactura[]> {
+  const { data, error } = await supabase
+    .from('inventario_facturas')
+    .select('*')
+    .eq('inventario_id', inventarioId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error al obtener facturas:', error);
+    throw new Error('No se pudieron cargar las facturas');
+  }
+
+  return data || [];
+}
+
+// Crear una factura
+export async function createFacturaInventario(factura: InventarioFacturaInsert): Promise<InventarioFactura> {
+  const { data, error } = await supabase
+    .from('inventario_facturas')
+    .insert([factura])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al crear factura:', error);
+    throw new Error('No se pudo crear la factura');
+  }
+
+  // Actualizar el total del inventario
+  await actualizarTotalInventarioConFacturas(factura.inventario_id);
+
+  return data;
+}
+
+// Actualizar una factura
+export async function updateFacturaInventario(
+  id: string,
+  updates: { nombre?: string; valor?: number }
+): Promise<InventarioFactura> {
+  // Obtener el inventario_id antes de actualizar
+  const { data: facturaActual } = await supabase
+    .from('inventario_facturas')
+    .select('inventario_id')
+    .eq('id', id)
+    .single();
+
+  const { data, error } = await supabase
+    .from('inventario_facturas')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al actualizar factura:', error);
+    throw new Error('No se pudo actualizar la factura');
+  }
+
+  // Actualizar el total del inventario
+  if (facturaActual) {
+    await actualizarTotalInventarioConFacturas(facturaActual.inventario_id);
+  }
+
+  return data;
+}
+
+// Eliminar una factura
+export async function deleteFacturaInventario(id: string): Promise<void> {
+  // Obtener el inventario_id antes de eliminar
+  const { data: factura } = await supabase
+    .from('inventario_facturas')
+    .select('inventario_id')
+    .eq('id', id)
+    .single();
+
+  const { error } = await supabase
+    .from('inventario_facturas')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error al eliminar factura:', error);
+    throw new Error('No se pudo eliminar la factura');
+  }
+
+  // Actualizar el total del inventario
+  if (factura) {
+    await actualizarTotalInventarioConFacturas(factura.inventario_id);
+  }
+}
+
+// Actualizar el total del inventario incluyendo facturas
+async function actualizarTotalInventarioConFacturas(inventarioId: string): Promise<void> {
+  // Obtener suma de detalles
+  const { data: detalles } = await supabase
+    .from('inventario_detalles')
+    .select('subtotal')
+    .eq('inventario_id', inventarioId);
+
+  const totalDetalles = detalles?.reduce((sum, d) => sum + (d.subtotal || 0), 0) || 0;
+
+  // Obtener suma de facturas
+  const { data: facturas } = await supabase
+    .from('inventario_facturas')
+    .select('valor')
+    .eq('inventario_id', inventarioId);
+
+  const totalFacturas = facturas?.reduce((sum, f) => sum + (f.valor || 0), 0) || 0;
+
+  // Actualizar el total general
+  await supabase
+    .from('inventarios')
+    .update({ total_general: totalDetalles + totalFacturas })
+    .eq('id', inventarioId);
 }

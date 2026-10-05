@@ -20,9 +20,15 @@ export function InventarioProductoItem({
 }: InventarioProductoItemProps) {
   const [cantidad, setCantidad] = useState(producto.cantidad.toString());
   
+  // Campo para sumar cantidades adicionales
+  const [cantidadASumar, setCantidadASumar] = useState('');
+  
   // Para materia prima: unidades completas y cantidad parcial
   const [unidadesCompletas, setUnidadesCompletas] = useState('0');
   const [cantidadParcial, setCantidadParcial] = useState('0');
+  
+  // Para sumar en materia prima
+  const [unidadesASumar, setUnidadesASumar] = useState('');
   
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,24 +42,18 @@ export function InventarioProductoItem({
 
   // Calcular subtotal para materia prima basado en unidades + parcial
   const calcularSubtotalMateriaPrima = useCallback((unidades: number, parcial: number): number => {
-    const precioUnidad = producto.precio_unitario; // precio por unidad completa (bulto, kilo)
-    
-    // Total = (unidades completas × precio) + (parcial/contenido × precio)
+    const precioUnidad = producto.precio_unitario;
     const valorUnidadesCompletas = unidades * precioUnidad;
     const valorParcial = contenidoPorUnidad > 0 ? (parcial / contenidoPorUnidad) * precioUnidad : 0;
-    
     return Math.round((valorUnidadesCompletas + valorParcial) * 100) / 100;
   }, [producto.precio_unitario, contenidoPorUnidad]);
 
   // Calcular subtotal según tipo de producto
   const calcularSubtotal = useCallback((cant: number): number => {
     let subtotal = cant * producto.precio_unitario;
-    
     if (esProduccion) {
-      // Aplicar descuento de producción
       subtotal = subtotal * (1 - porcentajeProduccion / 100);
     }
-    
     return Math.round(subtotal * 100) / 100;
   }, [esProduccion, producto.precio_unitario, porcentajeProduccion]);
 
@@ -61,12 +61,10 @@ export function InventarioProductoItem({
   useEffect(() => {
     if (!isFocused) {
       if (esMateriaPrima) {
-        // Intentar recuperar unidades y parcial de la cantidad total
         const cantidadTotal = producto.cantidad || 0;
         const unidadesEnteras = Math.floor(cantidadTotal);
         const fraccion = cantidadTotal - unidadesEnteras;
         const parcialRecuperado = Math.round(fraccion * contenidoPorUnidad * 100) / 100;
-        
         setUnidadesCompletas(unidadesEnteras.toString());
         setCantidadParcial(parcialRecuperado > 0 ? parcialRecuperado.toString() : '0');
       } else {
@@ -89,7 +87,6 @@ export function InventarioProductoItem({
       const unidades = parseFloat(unidadesCompletas) || 0;
       const parcial = parseFloat(cantidadParcial) || 0;
       const subtotal = calcularSubtotalMateriaPrima(unidades, parcial);
-      // Guardar cantidad total equivalente (para referencia)
       const cantidadTotal = unidades + (contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0);
       onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
     } else {
@@ -140,6 +137,38 @@ export function InventarioProductoItem({
     onCantidadChange(producto.producto_id, num, subtotal);
   };
 
+  // Función para sumar cantidad adicional (productos normales y producción)
+  const handleSumarCantidad = () => {
+    const cantidadActual = parseFloat(cantidad) || 0;
+    const aSumar = parseFloat(cantidadASumar) || 0;
+    
+    if (aSumar > 0) {
+      const nuevaCantidad = Math.round((cantidadActual + aSumar) * 100) / 100;
+      setCantidad(nuevaCantidad.toString());
+      const subtotal = calcularSubtotal(nuevaCantidad);
+      onCantidadChange(producto.producto_id, nuevaCantidad, subtotal);
+      setCantidadASumar('');
+    }
+  };
+
+  // Función para sumar en materia prima (solo unidades completas)
+  const handleSumarMateriaPrima = () => {
+    const unidadesActuales = parseFloat(unidadesCompletas) || 0;
+    const unidadesNuevas = parseFloat(unidadesASumar) || 0;
+    
+    if (unidadesNuevas > 0) {
+      const nuevasUnidades = unidadesActuales + unidadesNuevas;
+      setUnidadesCompletas(nuevasUnidades.toString());
+      
+      const parcial = parseFloat(cantidadParcial) || 0;
+      const subtotal = calcularSubtotalMateriaPrima(nuevasUnidades, parcial);
+      const cantidadTotal = nuevasUnidades + (contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0);
+      onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
+      
+      setUnidadesASumar('');
+    }
+  };
+
   const currentCantidad = parseFloat(cantidad) || 0;
   const currentUnidadesCompletas = parseFloat(unidadesCompletas) || 0;
   const currentCantidadParcial = parseFloat(cantidadParcial) || 0;
@@ -167,6 +196,7 @@ export function InventarioProductoItem({
   return (
     <Card className={`transition-all ${getBorderColor()}`}>
       <div className="p-3">
+        {/* Fila principal */}
         <div className="flex items-center gap-3">
           {/* Información del producto */}
           <div className="flex-1 min-w-0">
@@ -286,7 +316,7 @@ export function InventarioProductoItem({
               </div>
             </div>
 
-            {/* Fila 2: Cantidad parcial (lo que sobra del bulto incompleto) */}
+            {/* Fila 2: Cantidad parcial */}
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm text-gray-600">{unidadMedida} adicionales:</span>
               <input
@@ -334,6 +364,100 @@ export function InventarioProductoItem({
             }`}>
               {formatCurrency(subtotal)}
             </span>
+          </div>
+        )}
+
+        {/* Campo sutil para SUMAR cantidad - Productos normales y producción */}
+        {!esMateriaPrima && !disabled && (
+          <div className={`mt-2 pt-2 border-t flex items-center justify-end gap-2 ${
+            esProduccion ? 'border-blue-100' : 'border-gray-100'
+          }`}>
+            <span className="text-xs text-gray-400">agregar</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={cantidadASumar}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '' || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0)) {
+                  setCantidadASumar(v);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSumarCantidad();
+                }
+              }}
+              placeholder="0"
+              className={`w-14 h-7 text-center text-sm border rounded focus:outline-none focus:ring-1 bg-gray-50 placeholder-gray-300 ${
+                esProduccion 
+                  ? 'border-blue-200 focus:ring-blue-400 focus:border-blue-400' 
+                  : 'border-bakery-200 focus:ring-bakery-400 focus:border-bakery-400'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={handleSumarCantidad}
+              disabled={!cantidadASumar || parseFloat(cantidadASumar) <= 0}
+              className={`h-7 w-7 flex items-center justify-center rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                esProduccion 
+                  ? 'bg-blue-100 text-blue-500 hover:bg-blue-200' 
+                  : 'bg-bakery-100 text-bakery-500 hover:bg-bakery-200'
+              }`}
+              title="Sumar al total"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            {/* Preview sutil */}
+            {cantidadASumar && parseFloat(cantidadASumar) > 0 && (
+              <span className={`text-xs ${esProduccion ? 'text-blue-400' : 'text-bakery-400'}`}>
+                → {currentCantidad + parseFloat(cantidadASumar)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Campo sutil para SUMAR unidades - Materia Prima */}
+        {esMateriaPrima && !disabled && (
+          <div className="mt-2 pt-2 border-t border-yellow-100 flex items-center justify-end gap-2">
+            <span className="text-xs text-gray-400">agregar unidades</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={unidadesASumar}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '' || (!isNaN(parseInt(v)) && parseInt(v) >= 0)) {
+                  setUnidadesASumar(v);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSumarMateriaPrima();
+                }
+              }}
+              placeholder="0"
+              className="w-14 h-7 text-center text-sm border border-yellow-200 rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 focus:border-yellow-400 bg-gray-50 placeholder-gray-300"
+            />
+            <button
+              type="button"
+              onClick={handleSumarMateriaPrima}
+              disabled={!unidadesASumar || parseFloat(unidadesASumar) <= 0}
+              className="h-7 w-7 flex items-center justify-center rounded bg-yellow-100 text-yellow-500 hover:bg-yellow-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Sumar al total"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            {/* Preview sutil */}
+            {unidadesASumar && parseFloat(unidadesASumar) > 0 && (
+              <span className="text-xs text-yellow-400">
+                → {currentUnidadesCompletas + parseFloat(unidadesASumar)}
+              </span>
+            )}
           </div>
         )}
       </div>

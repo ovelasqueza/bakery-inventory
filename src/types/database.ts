@@ -12,6 +12,32 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      inventario_facturas: {
+        Row: {
+          id: string;
+          inventario_id: string;
+          nombre: string;
+          valor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          inventario_id: string;
+          nombre: string;
+          valor: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          inventario_id?: string;
+          nombre?: string;
+          valor?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       productos: {
         Row: {
           id: string;
@@ -186,12 +212,17 @@ export type InventarioDetalleUpdate = Database['public']['Tables']['inventario_d
 
 export type Configuracion = Database['public']['Tables']['configuracion']['Row'];
 
+export type InventarioFactura = Database['public']['Tables']['inventario_facturas']['Row'];
+export type InventarioFacturaInsert = Database['public']['Tables']['inventario_facturas']['Insert'];
+export type InventarioFacturaUpdate = Database['public']['Tables']['inventario_facturas']['Update'];
+
 export interface InventarioDetalleConProducto extends InventarioDetalle {
   productos?: Producto;
 }
 
 export interface InventarioCompleto extends Inventario {
   inventario_detalles?: InventarioDetalleConProducto[];
+  inventario_facturas?: InventarioFactura[];
 }
 
 // Tipo para el formulario de inventario en la UI

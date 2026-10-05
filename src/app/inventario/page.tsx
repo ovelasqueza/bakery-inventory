@@ -128,6 +128,11 @@ export default function InventarioPage() {
       formatCurrency(d.subtotal),
     ]);
 
+    // Calcular subtotal de productos
+    const subtotalProductos = detalles.reduce((sum, d) => sum + d.subtotal, 0);
+
+    let finalY = 40;
+
     autoTable(doc, {
       startY: 40,
       head: [['Producto', 'Cantidad', 'Precio Unit.', 'Subtotal']],
@@ -145,10 +150,63 @@ export default function InventarioPage() {
         3: { cellWidth: 35, halign: 'right' },
       },
       foot: [[
-        { content: 'TOTAL GENERAL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'right' } },
-        { content: formatCurrency(detalleInventario.total_general), styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: 'SUBTOTAL PRODUCTOS', colSpan: 3, styles: { fontStyle: 'bold', halign: 'right' } },
+        { content: formatCurrency(subtotalProductos), styles: { fontStyle: 'bold', halign: 'right' } },
       ]],
+      didDrawPage: (data) => {
+        finalY = data.cursor?.y || 40;
+      },
     });
+
+    // Agregar facturas si existen
+    const facturas = detalleInventario.inventario_facturas || [];
+    if (facturas.length > 0) {
+      finalY += 10;
+
+      // Título de facturas
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Facturas Adicionales', 14, finalY);
+      
+      finalY += 5;
+
+      const facturasData = facturas.map((f) => [
+        f.nombre,
+        formatCurrency(f.valor),
+      ]);
+
+      const subtotalFacturas = facturas.reduce((sum, f) => sum + f.valor, 0);
+
+      autoTable(doc, {
+        startY: finalY,
+        head: [['Descripción', 'Valor']],
+        body: facturasData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [100, 100, 100],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 120 },
+          1: { cellWidth: 60, halign: 'right' },
+        },
+        foot: [[
+          { content: 'SUBTOTAL FACTURAS', styles: { fontStyle: 'bold', halign: 'right' } },
+          { content: formatCurrency(subtotalFacturas), styles: { fontStyle: 'bold', halign: 'right' } },
+        ]],
+        didDrawPage: (data) => {
+          finalY = data.cursor?.y || finalY;
+        },
+      });
+    }
+
+    // Total general
+    finalY += 10;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 128, 0);
+    doc.text(`TOTAL GENERAL: ${formatCurrency(detalleInventario.total_general)}`, 14, finalY);
 
     // Guardar
     doc.save(`inventario_${fechaFormateada.replace(/\//g, '-')}.pdf`);
@@ -158,6 +216,14 @@ export default function InventarioPage() {
   // Separar inventarios en curso y completados
   const inventariosEnCurso = inventarios.filter((i) => i.estado === 'en_proceso');
   const inventariosCompletados = inventarios.filter((i) => i.estado === 'completado');
+
+  // Calcular totales para el modal
+  const calcularTotales = () => {
+    if (!detalleInventario) return { productos: 0, facturas: 0 };
+    const productos = (detalleInventario.inventario_detalles || []).reduce((sum, d) => sum + d.subtotal, 0);
+    const facturas = (detalleInventario.inventario_facturas || []).reduce((sum, f) => sum + f.valor, 0);
+    return { productos, facturas };
+  };
 
   if (view !== 'list') {
     return (
@@ -418,19 +484,20 @@ export default function InventarioPage() {
               <p className="text-2xl font-bold text-green-600">
                 {formatCurrency(detalleInventario.total_general)}
               </p>
+              {/* Desglose si hay facturas */}
+              {detalleInventario.inventario_facturas && detalleInventario.inventario_facturas.length > 0 && (
+                <p className="text-xs text-green-600 mt-1">
+                  Productos: {formatCurrency(calcularTotales().productos)} + Facturas: {formatCurrency(calcularTotales().facturas)}
+                </p>
+              )}
             </div>
 
             {/* Lista de productos */}
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b hidden sm:block">
-                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 uppercase">
-                  <div className="col-span-5">Producto</div>
-                  <div className="col-span-2 text-center">Cant.</div>
-                  <div className="col-span-2 text-right">Precio</div>
-                  <div className="col-span-3 text-right">Subtotal</div>
-                </div>
+              <div className="bg-gray-50 px-4 py-2 border-b">
+                <h4 className="text-sm font-medium text-gray-700">📦 Productos</h4>
               </div>
-              <div className="divide-y max-h-[50vh] overflow-y-auto">
+              <div className="divide-y max-h-[35vh] overflow-y-auto">
                 {detalleInventario.inventario_detalles && detalleInventario.inventario_detalles.length > 0 ? (
                   detalleInventario.inventario_detalles.map((detalle) => {
                     // Detectar si tiene descuento comparando subtotal con cantidad*precio
@@ -489,7 +556,34 @@ export default function InventarioPage() {
                   </div>
                 )}
               </div>
+              {/* Subtotal productos */}
+              <div className="bg-gray-50 px-4 py-2 border-t flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-600">Subtotal productos</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(calcularTotales().productos)}</span>
+              </div>
             </div>
+
+            {/* Lista de facturas */}
+            {detalleInventario.inventario_facturas && detalleInventario.inventario_facturas.length > 0 && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2 border-b">
+                  <h4 className="text-sm font-medium text-gray-700">📄 Facturas adicionales</h4>
+                </div>
+                <div className="divide-y">
+                  {detalleInventario.inventario_facturas.map((factura) => (
+                    <div key={factura.id} className="px-4 py-3 flex justify-between items-center">
+                      <p className="font-medium text-gray-900 text-sm">{factura.nombre}</p>
+                      <p className="font-semibold text-bakery-600">{formatCurrency(factura.valor)}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Subtotal facturas */}
+                <div className="bg-gray-50 px-4 py-2 border-t flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-600">Subtotal facturas</span>
+                  <span className="font-semibold text-bakery-600">{formatCurrency(calcularTotales().facturas)}</span>
+                </div>
+              </div>
+            )}
 
             {/* Total final y botón PDF */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4 border-t">

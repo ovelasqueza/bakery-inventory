@@ -3,11 +3,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button, Input, Card, LoadingSpinner, EmptyState, useToast } from '@/components/ui';
 import { InventarioProductoItem } from './InventarioProductoItem';
-import type { Inventario, ProductoInventario } from '@/types/database';
+import type { Inventario, ProductoInventario, InventarioFactura } from '@/types/database';
 import {
   inicializarInventario,
   saveInventarioDetalles,
   finalizarInventario,
+  getFacturasInventario,
+  createFacturaInventario,
+  deleteFacturaInventario,
 } from '@/lib/api/inventarios';
 import {
   formatCurrency,
@@ -32,6 +35,12 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
   const [yaCargoInicial, setYaCargoInicial] = useState(false);
   const { showToast } = useToast();
 
+  // Estado para facturas
+  const [facturas, setFacturas] = useState<InventarioFactura[]>([]);
+  const [nuevaFacturaNombre, setNuevaFacturaNombre] = useState('');
+  const [nuevaFacturaValor, setNuevaFacturaValor] = useState('');
+  const [agregandoFactura, setAgregandoFactura] = useState(false);
+
   // Si hay fecha inicial, cargar automáticamente el inventario (solo una vez)
   useEffect(() => {
     if (fechaInicial && !yaCargoInicial) {
@@ -47,6 +56,10 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
       setInventario(resultado.inventario);
       setProductos(resultado.productos);
       setPorcentajeProduccion(resultado.porcentajeProduccion);
+      
+      // Cargar facturas existentes
+      const facturasExistentes = await getFacturasInventario(resultado.inventario.id);
+      setFacturas(facturasExistentes);
       
       if (mostrarToast) {
         if (resultado.inventario.estado === 'en_proceso') {
@@ -100,10 +113,16 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
     return grupos;
   }, [filteredProductos]);
 
-  // Calcular total general
-  const totalGeneral = useMemo(() => {
+  // Calcular total general (productos + facturas)
+  const totalProductos = useMemo(() => {
     return calculateTotal(productos);
   }, [productos]);
+
+  const totalFacturas = useMemo(() => {
+    return facturas.reduce((sum, f) => sum + f.valor, 0);
+  }, [facturas]);
+
+  const totalGeneral = totalProductos + totalFacturas;
 
   // Productos con cantidad > 0
   const productosContados = useMemo(() => {
@@ -124,6 +143,48 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
       })
     );
   }, []);
+
+  // Agregar factura
+  const handleAgregarFactura = async () => {
+    if (!inventario || !nuevaFacturaNombre.trim() || !nuevaFacturaValor) return;
+    
+    const valor = parseFloat(nuevaFacturaValor);
+    if (isNaN(valor) || valor <= 0) {
+      showToast('Ingresa un valor válido', 'error');
+      return;
+    }
+
+    setAgregandoFactura(true);
+    try {
+      const nuevaFactura = await createFacturaInventario({
+        inventario_id: inventario.id,
+        nombre: nuevaFacturaNombre.trim(),
+        valor: valor,
+      });
+      
+      setFacturas(prev => [...prev, nuevaFactura]);
+      setNuevaFacturaNombre('');
+      setNuevaFacturaValor('');
+      showToast('Factura agregada', 'success');
+    } catch (error) {
+      console.error('Error al agregar factura:', error);
+      showToast('Error al agregar factura', 'error');
+    } finally {
+      setAgregandoFactura(false);
+    }
+  };
+
+  // Eliminar factura
+  const handleEliminarFactura = async (facturaId: string) => {
+    try {
+      await deleteFacturaInventario(facturaId);
+      setFacturas(prev => prev.filter(f => f.id !== facturaId));
+      showToast('Factura eliminada', 'success');
+    } catch (error) {
+      console.error('Error al eliminar factura:', error);
+      showToast('Error al eliminar factura', 'error');
+    }
+  };
 
   const handleGuardar = async (finalizar = false) => {
     if (!inventario) return;
@@ -289,6 +350,105 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
         </div>
       )}
 
+      {/* Sección de Facturas */}
+      <Card>
+        <div className="p-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5 text-bakery-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Facturas adicionales
+          </h3>
+
+          {/* Lista de facturas existentes */}
+          {facturas.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {facturas.map((factura) => (
+                <div
+                  key={factura.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{factura.nombre}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-bakery-600">
+                      {formatCurrency(factura.valor)}
+                    </span>
+                    {inventario.estado !== 'completado' && (
+                      <button
+                        type="button"
+                        onClick={() => handleEliminarFactura(factura.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Eliminar factura"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {/* Subtotal de facturas */}
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                <span className="text-sm text-gray-500">Subtotal facturas</span>
+                <span className="font-semibold text-bakery-600">{formatCurrency(totalFacturas)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Formulario para agregar factura */}
+          {inventario.estado !== 'completado' && (
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Nombre de la factura"
+                    value={nuevaFacturaNombre}
+                    onChange={(e) => setNuevaFacturaNombre(e.target.value)}
+                  />
+                </div>
+                <div className="w-full sm:w-32">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Valor"
+                    value={nuevaFacturaValor}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === '' || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0)) {
+                        setNuevaFacturaValor(v);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAgregarFactura();
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  onClick={handleAgregarFactura}
+                  isLoading={agregandoFactura}
+                  disabled={!nuevaFacturaNombre.trim() || !nuevaFacturaValor}
+                  className="w-full sm:w-auto"
+                >
+                  <svg className="w-5 h-5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="hidden sm:inline">Agregar</span>
+                </Button>
+              </div>
+              <p className="text-xs text-gray-400">
+                Las facturas se agregan al total del inventario
+              </p>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Barra fija inferior con total y acciones */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -298,6 +458,11 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
               <p className="text-2xl font-bold text-bakery-600">
                 {formatCurrency(totalGeneral)}
               </p>
+              {facturas.length > 0 && (
+                <p className="text-xs text-gray-400">
+                  Productos: {formatCurrency(totalProductos)} + Facturas: {formatCurrency(totalFacturas)}
+                </p>
+              )}
             </div>
             {inventario.estado !== 'completado' && (
               <div className="flex gap-2">
