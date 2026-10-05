@@ -64,7 +64,7 @@ export function InventarioProductoItem({
         const cantidadTotal = producto.cantidad || 0;
         const unidadesEnteras = Math.floor(cantidadTotal);
         const fraccion = cantidadTotal - unidadesEnteras;
-        const parcialRecuperado = Math.round(fraccion * contenidoPorUnidad * 100) / 100;
+        const parcialRecuperado = parseFloat((fraccion * contenidoPorUnidad).toFixed(2));
         setUnidadesCompletas(unidadesEnteras.toString());
         setCantidadParcial(parcialRecuperado > 0 ? parcialRecuperado.toString() : '0');
       } else {
