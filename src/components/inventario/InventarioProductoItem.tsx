@@ -87,16 +87,9 @@ export function InventarioProductoItem({
       const unidades = parseFloat(unidadesCompletas) || 0;
       const parcial = parseFloat(cantidadParcial) || 0;
       const subtotal = calcularSubtotalMateriaPrima(unidades, parcial);
-      // Calcular la fracción y redondear a 2 decimales (lo que soporta la BD)
-      // Luego recalcular el parcial que corresponde a esa fracción redondeada
+      // Usar más decimales para la fracción para evitar pérdida de precisión
       const fraccion = contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0;
-      const fraccionRedondeada = Math.round(fraccion * 100) / 100;
-      const cantidadTotal = unidades + fraccionRedondeada;
-      // Actualizar el parcial mostrado para que coincida con lo que se guardará
-      const parcialAjustado = parseFloat((fraccionRedondeada * contenidoPorUnidad).toFixed(2));
-      if (parcialAjustado !== parcial && parcial > 0) {
-        setCantidadParcial(parcialAjustado.toString());
-      }
+      const cantidadTotal = parseFloat((unidades + fraccion).toFixed(6));
       onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
     } else {
       const num = parseFloat(cantidad) || 0;
@@ -121,8 +114,7 @@ export function InventarioProductoItem({
       const parcial = parseFloat(cantidadParcial) || 0;
       const subtotal = calcularSubtotalMateriaPrima(num, parcial);
       const fraccion = contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0;
-      const fraccionRedondeada = Math.round(fraccion * 100) / 100;
-      const cantidadTotal = num + fraccionRedondeada;
+      const cantidadTotal = parseFloat((num + fraccion).toFixed(6));
       onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
       return;
     }
@@ -139,8 +131,7 @@ export function InventarioProductoItem({
       const parcial = parseFloat(cantidadParcial) || 0;
       const subtotal = calcularSubtotalMateriaPrima(num, parcial);
       const fraccion = contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0;
-      const fraccionRedondeada = Math.round(fraccion * 100) / 100;
-      const cantidadTotal = num + fraccionRedondeada;
+      const cantidadTotal = parseFloat((num + fraccion).toFixed(6));
       onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
       return;
     }
@@ -176,8 +167,7 @@ export function InventarioProductoItem({
       const parcial = parseFloat(cantidadParcial) || 0;
       const subtotal = calcularSubtotalMateriaPrima(nuevasUnidades, parcial);
       const fraccion = contenidoPorUnidad > 0 ? parcial / contenidoPorUnidad : 0;
-      const fraccionRedondeada = Math.round(fraccion * 100) / 100;
-      const cantidadTotal = nuevasUnidades + fraccionRedondeada;
+      const cantidadTotal = parseFloat((nuevasUnidades + fraccion).toFixed(6));
       onCantidadChange(producto.producto_id, cantidadTotal, subtotal);
       
       setUnidadesASumar('');
