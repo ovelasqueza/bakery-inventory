@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button, Input, Card, LoadingSpinner, EmptyState, useToast } from '@/components/ui';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Button, Input, Card, LoadingSpinner, EmptyState, Modal, useToast } from '@/components/ui';
 import { InventarioProductoItem } from './InventarioProductoItem';
+import { ProductoForm } from '../productos/ProductoForm';
 import type { Inventario, ProductoInventario, InventarioFactura } from '@/types/database';
 import {
   inicializarInventario,
@@ -12,6 +13,7 @@ import {
   createFacturaInventario,
   deleteFacturaInventario,
 } from '@/lib/api/inventarios';
+import { createProducto } from '@/lib/api/productos';
 import {
   formatCurrency,
   getDefaultInventoryDate,
@@ -41,6 +43,16 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
   const [nuevaFacturaValor, setNuevaFacturaValor] = useState('');
   const [agregandoFactura, setAgregandoFactura] = useState(false);
 
+  // Estado para autoguardado
+  const [autoGuardando, setAutoGuardando] = useState(false);
+  const [ultimoGuardado, setUltimoGuardado] = useState<Date | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const productosIniciales = useRef<string>('');
+
+  // Estado para modal de nuevo producto
+  const [showNuevoProducto, setShowNuevoProducto] = useState(false);
+  const [creandoProducto, setCreandoProducto] = useState(false);
+
   // Si hay fecha inicial, cargar automáticamente el inventario (solo una vez)
   useEffect(() => {
     if (fechaInicial && !yaCargoInicial) {
@@ -48,6 +60,57 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
       cargarInventario(fechaInicial, false);
     }
   }, [fechaInicial, yaCargoInicial]);
+
+  // Autoguardado con debounce de 3 segundos
+  useEffect(() => {
+    if (!inventario || inventario.estado === 'completado') return;
+    
+    // Serializar productos actuales para comparar
+    const productosActuales = JSON.stringify(productos.map(p => ({ id: p.producto_id, c: p.cantidad, s: p.subtotal })));
+    
+    // Si es la primera carga, guardar el estado inicial sin disparar guardado
+    if (!productosIniciales.current) {
+      productosIniciales.current = productosActuales;
+      return;
+    }
+    
+    // Si no hay cambios, no hacer nada
+    if (productosActuales === productosIniciales.current) return;
+    
+    // Limpiar timer anterior
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Crear nuevo timer para guardar en 3 segundos
+    debounceTimerRef.current = setTimeout(async () => {
+      setAutoGuardando(true);
+      try {
+        await saveInventarioDetalles(
+          inventario.id,
+          productos.map((p) => ({
+            producto_id: p.producto_id,
+            cantidad: p.cantidad,
+            precio_unitario_aplicado: p.precio_unitario,
+            subtotal: p.subtotal,
+          }))
+        );
+        productosIniciales.current = productosActuales;
+        setUltimoGuardado(new Date());
+      } catch (error) {
+        console.error('Error en autoguardado:', error);
+      } finally {
+        setAutoGuardando(false);
+      }
+    }, 3000);
+    
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [productos, inventario]);
 
   const cargarInventario = async (fechaParam: string, mostrarToast: boolean = true) => {
     setLoading(true);
@@ -91,7 +154,7 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
     );
   }, [productos, searchQuery]);
 
-  // Agrupar por tipo y categoría
+  // Agrupar por tipo y ordenar: sin contar arriba, contados abajo
   const productosPorGrupo = useMemo(() => {
     const grupos = new Map<string, ProductoInventario[]>();
     
@@ -106,7 +169,17 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
     ordenTipos.forEach(tipo => {
       const productosTipo = filteredProductos.filter(p => p.tipo_producto === tipo);
       if (productosTipo.length > 0) {
-        grupos.set(nombresTipos[tipo], productosTipo);
+        // Ordenar: sin contar (cantidad = 0) arriba, contados (cantidad > 0) abajo
+        const ordenados = [...productosTipo].sort((a, b) => {
+          const aContado = a.cantidad > 0 || a.subtotal > 0 ? 1 : 0;
+          const bContado = b.cantidad > 0 || b.subtotal > 0 ? 1 : 0;
+          if (aContado !== bContado) {
+            return aContado - bContado; // Sin contar primero
+          }
+          // Si ambos tienen el mismo estado, ordenar alfabéticamente
+          return a.nombre.localeCompare(b.nombre);
+        });
+        grupos.set(nombresTipos[tipo], ordenados);
       }
     });
 
@@ -143,6 +216,71 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
       })
     );
   }, []);
+
+  // Abrir modal de nuevo producto (guarda primero)
+  const handleAbrirNuevoProducto = async () => {
+    if (!inventario) return;
+    
+    // Guardar inventario actual antes de abrir modal
+    try {
+      await saveInventarioDetalles(
+        inventario.id,
+        productos.map((p) => ({
+          producto_id: p.producto_id,
+          cantidad: p.cantidad,
+          precio_unitario_aplicado: p.precio_unitario,
+          subtotal: p.subtotal,
+        }))
+      );
+      productosIniciales.current = JSON.stringify(productos.map(p => ({ id: p.producto_id, c: p.cantidad, s: p.subtotal })));
+      setUltimoGuardado(new Date());
+    } catch (error) {
+      console.error('Error al guardar antes de crear producto:', error);
+    }
+    
+    setShowNuevoProducto(true);
+  };
+
+  // Crear nuevo producto desde inventario
+  const handleCrearProducto = async (data: {
+    nombre: string;
+    precio_actual: number;
+    tipo_producto: 'normal' | 'produccion' | 'materia_prima';
+    contenido_por_unidad?: number | null;
+    unidad_medida?: string | null;
+  }) => {
+    setCreandoProducto(true);
+    try {
+      const nuevoProducto = await createProducto(data);
+      
+      // Agregar el nuevo producto a la lista del inventario
+      const nuevoProductoInventario: ProductoInventario = {
+        producto_id: nuevoProducto.id,
+        nombre: nuevoProducto.nombre,
+        tipo_producto: nuevoProducto.tipo_producto || 'normal',
+        precio_unitario: nuevoProducto.precio_actual,
+        contenido_por_unidad: nuevoProducto.contenido_por_unidad,
+        unidad_medida: nuevoProducto.unidad_medida,
+        cantidad: 0,
+        subtotal: 0,
+      };
+      
+      setProductos(prev => [...prev, nuevoProductoInventario]);
+      setShowNuevoProducto(false);
+      showToast(`Producto "${nuevoProducto.nombre}" creado`, 'success');
+      
+      // Actualizar el estado inicial para que no dispare autoguardado innecesario
+      setTimeout(() => {
+        productosIniciales.current = JSON.stringify([...productos, nuevoProductoInventario].map(p => ({ id: p.producto_id, c: p.cantidad, s: p.subtotal })));
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error al crear producto:', error);
+      showToast('Error al crear el producto', 'error');
+    } finally {
+      setCreandoProducto(false);
+    }
+  };
 
   // Agregar factura
   const handleAgregarFactura = async () => {
@@ -294,12 +432,28 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
             </span>
           </div>
 
-          {/* Barra de búsqueda */}
-          <Input
-            placeholder="Buscar producto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {/* Barra de búsqueda y botón nuevo producto */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Buscar producto..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            {inventario.estado !== 'completado' && (
+              <Button
+                variant="secondary"
+                onClick={handleAbrirNuevoProducto}
+                className="whitespace-nowrap"
+              >
+                <svg className="w-5 h-5 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden sm:inline">Nuevo</span>
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -454,7 +608,22 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-gray-500">Total del inventario</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-500">Total del inventario</p>
+                {/* Indicador de autoguardado */}
+                {autoGuardando && (
+                  <span className="flex items-center gap-1 text-xs text-blue-500">
+                    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Guardando...
+                  </span>
+                )}
+                {!autoGuardando && ultimoGuardado && (
+                  <span className="text-xs text-green-500">✓ Guardado</span>
+                )}
+              </div>
               <p className="text-2xl font-bold text-bakery-600">
                 {formatCurrency(totalGeneral)}
               </p>
@@ -486,6 +655,19 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
           </div>
         </div>
       </div>
+
+      {/* Modal para crear nuevo producto */}
+      <Modal
+        isOpen={showNuevoProducto}
+        onClose={() => setShowNuevoProducto(false)}
+        title="Nuevo producto"
+      >
+        <ProductoForm
+          onSubmit={handleCrearProducto}
+          onCancel={() => setShowNuevoProducto(false)}
+          isLoading={creandoProducto}
+        />
+      </Modal>
     </div>
   );
 }

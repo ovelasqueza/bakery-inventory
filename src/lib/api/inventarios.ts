@@ -253,25 +253,36 @@ export async function inicializarInventario(fecha: string): Promise<{
       const detalle = detallesMap.get(p.id);
       const tipoProducto = (p.tipo_producto as 'normal' | 'produccion' | 'materia_prima') || 'normal';
       
-      // Usar el subtotal guardado si existe, sino calcularlo
-      let subtotal = detalle?.subtotal || 0;
-      if (!subtotal && detalle) {
-        // Si no hay subtotal guardado, recalcular
+      // SIEMPRE usar el precio actual del producto (no el guardado)
+      const precioActual = p.precio_actual;
+      const cantidad = detalle?.cantidad || 0;
+      
+      // Recalcular subtotal con el precio actual
+      let subtotal = 0;
+      if (cantidad > 0) {
         if (tipoProducto === 'produccion') {
-          subtotal = detalle.cantidad * detalle.precio_unitario_aplicado * (1 - porcentajeProduccion / 100);
+          subtotal = cantidad * precioActual * (1 - porcentajeProduccion / 100);
+        } else if (tipoProducto === 'materia_prima') {
+          // Para materia prima, el subtotal se calcula basado en unidades + parcial
+          const contenido = p.contenido_por_unidad || 1;
+          const unidadesEnteras = Math.floor(cantidad);
+          const fraccion = cantidad - unidadesEnteras;
+          const parcial = fraccion * contenido;
+          subtotal = (unidadesEnteras * precioActual) + ((parcial / contenido) * precioActual);
         } else {
-          subtotal = detalle.cantidad * detalle.precio_unitario_aplicado;
+          subtotal = cantidad * precioActual;
         }
+        subtotal = Math.round(subtotal * 100) / 100;
       }
       
       return {
         producto_id: p.id,
         nombre: p.nombre,
         tipo_producto: tipoProducto,
-        precio_unitario: detalle?.precio_unitario_aplicado || p.precio_actual,
+        precio_unitario: precioActual, // Siempre precio actual
         contenido_por_unidad: p.contenido_por_unidad || null,
         unidad_medida: p.unidad_medida || null,
-        cantidad: detalle?.cantidad || 0,
+        cantidad: cantidad,
         subtotal: subtotal,
       };
     });
