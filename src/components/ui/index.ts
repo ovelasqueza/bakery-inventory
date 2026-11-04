@@ -6,3 +6,4 @@ export { Modal } from './Modal';
 export { ToastProvider, useToast } from './Toast';
 export { LoadingSpinner, LoadingPage } from './LoadingSpinner';
 export { EmptyState } from './EmptyState';
+export { BotonCajon } from './BotonCajon';

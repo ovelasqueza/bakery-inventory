@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card } from '@/components/ui';
+import { BotonCajon, Card } from '@/components/ui';
 
 export default function HomePage() {
   const currentYear = new Date().getFullYear();
@@ -11,7 +11,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-bakery-50 to-orange-50 flex flex-col">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
+        <div className="relative max-w-7xl mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-center sm:flex-col sm:items-center sm:gap-1">
             {/* Logo */}
             <div className="w-20 h-12 sm:w-80 sm:h-48 relative">
@@ -23,6 +23,10 @@ export default function HomePage() {
                 priority
               />
             </div>
+          </div>
+          {/* Abrir el cajón monedero: solo en computador (el cajón va conectado al equipo de la caja) */}
+          <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 sm:block">
+            <BotonCajon />
           </div>
         </div>
       </header>
