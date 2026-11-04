@@ -7,6 +7,7 @@ param(
   [ValidateSet(2, 5)][int]$Pin = 2,
   # Direcciones desde donde se abre la app de caja
   [string[]]$Origenes = @(
+    'https://inventario-lizpan.vercel.app',
     'http://localhost:3000',
     'http://127.0.0.1:3000'
   )

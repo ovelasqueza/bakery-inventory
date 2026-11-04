@@ -25,18 +25,19 @@ export function BotonCajon({ className }: { className?: string }) {
       onClick={abrir}
       disabled={abriendo}
       aria-label="Abrir cajón"
+      title="Abrir cajón"
       className={cn(
-        'inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-bakery-600 px-4 font-medium text-white',
-        'transition-all duration-200 hover:bg-bakery-700 focus:outline-none focus:ring-2 focus:ring-bakery-500 focus:ring-offset-2',
-        'active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center gap-1.5 rounded-full border border-bakery-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-bakery-700 shadow-sm backdrop-blur-sm',
+        'transition-all duration-200 hover:border-bakery-300 hover:bg-bakery-50 focus:outline-none focus:ring-2 focus:ring-bakery-400 focus:ring-offset-1',
+        'active:scale-95 disabled:cursor-not-allowed disabled:opacity-60',
         className
       )}
     >
       {/* Ícono de caja registradora */}
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <svg className={cn('h-4 w-4', abriendo && 'animate-pulse')} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13h16v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM6 13V8a1 1 0 011-1h10a1 1 0 011 1v5M9 4h6v3H9zM10 16.5h4" />
       </svg>
-      <span>{abriendo ? 'Abriendo…' : 'Abrir cajón'}</span>
+      <span>Cajón</span>
     </button>
   );
 }

@@ -25,7 +25,7 @@ export default function HomePage() {
             </div>
           </div>
           {/* Abrir el cajón monedero: solo en computador (el cajón va conectado al equipo de la caja) */}
-          <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 sm:block">
+          <div className="absolute right-4 top-3 hidden sm:block">
             <BotonCajon />
           </div>
         </div>

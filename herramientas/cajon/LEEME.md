@@ -19,13 +19,14 @@ Desde ese momento el agente arranca solo cada vez que se inicia sesión en Windo
 
 El agente solo obedece a estas direcciones:
 
+- `https://inventario-lizpan.vercel.app`
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
 
-Si la app se abre desde otra dirección, por ejemplo la de Vercel o un dominio propio, instala así:
+Si la app se abre desde otra dirección, por ejemplo un dominio propio, instala así:
 
 ```
-instalar.cmd -Origenes https://mi-app.vercel.app
+instalar.cmd -Origenes https://mi-dominio.com
 ```
 
 ## Cambiar la impresora o desinstalar
