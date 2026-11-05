@@ -245,6 +245,7 @@ export function InventarioForm({ onComplete, fechaInicial }: InventarioFormProps
   const handleCrearProducto = async (data: {
     nombre: string;
     precio_actual: number;
+    precio_venta?: number | null;
     tipo_producto: 'normal' | 'produccion' | 'materia_prima';
     contenido_por_unidad?: number | null;
     unidad_medida?: string | null;

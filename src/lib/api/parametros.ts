@@ -1,0 +1,367 @@
+import { supabase } from '@/lib/supabase';
+import { ErrorApp, traducirError } from '@/lib/api/errores';
+
+// ============================================
+// Parámetros de la Caja (Req 2.2, 2.3, 6.2, 14.1–14.8, 14.12, 14.13)
+// Las tablas de parámetros no se borran: solo se desactivan (Req 14.8).
+// ============================================
+
+const TIEMPO_LIMITE_MS = 15_000;
+const BASE_MAXIMA = 10_000_000;
+
+export type MetodoPagoParam = {
+  id: string;
+  nombre: string;
+  esEfectivo: boolean;
+  activo: boolean;
+  orden: number;
+};
+
+export type CategoriaGastoParam = { id: string; nombre: string; activo: boolean };
+export type PersonaCajaParam = { id: string; nombre: string; activo: boolean };
+export type CategoriaProducto = { id: string; nombre: string };
+
+export type ParametrosCaja = {
+  metodosPago: MetodoPagoParam[];
+  categoriasGasto: CategoriaGastoParam[];
+  personas: PersonaCajaParam[];
+  categoriasProducto: CategoriaProducto[];
+  baseCajaDefecto: number;
+  cajonAlCobrar: boolean;
+  cajonEnTurno: boolean;
+};
+
+export type ProductoConfigurable = {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  /** Precio de venta al público (null = no se vende en Caja). */
+  precioVenta: number | null;
+  categoriaId: string | null;
+  visibleCaja: boolean;
+  ordenCaja: number;
+  imagenPath: string | null;
+};
+
+export type ClaveConfigCaja = 'base_caja_defecto' | 'cajon_al_cobrar' | 'cajon_en_turno';
+
+// ---- Ayudantes ----
+
+type Respuesta = { data: unknown; error: unknown; status?: number };
+
+function sinConexion(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+/**
+ * Ejecuta una consulta con tiempo límite de 15 s. Sin conexión no llama al servidor;
+ * los errores se traducen con `traducirError` (23505 → NOMBRE_REPETIDO, trigger → SIN_METODO_EFECTIVO).
+ */
+async function consultar<T>(construir: (senal: AbortSignal) => PromiseLike<Respuesta>): Promise<T> {
+  if (sinConexion()) throw new ErrorApp('SIN_CONEXION');
+  let respuesta: Respuesta;
+  try {
+    respuesta = await construir(AbortSignal.timeout(TIEMPO_LIMITE_MS));
+  } catch (e) {
+    throw traducirError(e);
+  }
+  if (respuesta.error) throw traducirError(respuesta.error, respuesta.status);
+  return respuesta.data as T;
+}
+
+function texto(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+type FilaMetodo = { id: string; nombre: string; es_efectivo: boolean; activo: boolean; orden: number };
+type FilaSimple = { id: string; nombre: string; activo: boolean };
+type FilaProducto = {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  precio_venta: number | string | null;
+  categoria_id: string | null;
+  visible_caja: boolean | null;
+  orden_caja: number | null;
+  imagen_path: string | null;
+};
+
+const COLUMNAS_METODO = 'id, nombre, es_efectivo, activo, orden';
+const COLUMNAS_SIMPLE = 'id, nombre, activo';
+const COLUMNAS_PRODUCTO =
+  'id, nombre, activo, precio_venta, categoria_id, visible_caja, orden_caja, imagen_path';
+
+function aMetodo(f: FilaMetodo): MetodoPagoParam {
+  return { id: f.id, nombre: f.nombre, esEfectivo: f.es_efectivo, activo: f.activo, orden: f.orden };
+}
+
+function aSimple(f: FilaSimple): { id: string; nombre: string; activo: boolean } {
+  return { id: f.id, nombre: f.nombre, activo: f.activo };
+}
+
+function aProducto(f: FilaProducto): ProductoConfigurable {
+  return {
+    id: f.id,
+    nombre: f.nombre,
+    activo: f.activo,
+    precioVenta: f.precio_venta === null || f.precio_venta === undefined ? null : Number(f.precio_venta),
+    categoriaId: f.categoria_id ?? null,
+    // Sin configuración: visible con orden 0 (Req 14.6)
+    visibleCaja: f.visible_caja ?? true,
+    ordenCaja: f.orden_caja ?? 0,
+    imagenPath: f.imagen_path ?? null,
+  };
+}
+
+function leerBase(valor: string | undefined): number {
+  if (valor === undefined || !/^\d+$/.test(valor.trim())) return 0;
+  const n = Number(valor.trim());
+  return Number.isSafeInteger(n) && n <= BASE_MAXIMA ? n : 0;
+}
+
+function leerBooleano(valor: string | undefined): boolean {
+  const v = (valor ?? '').trim().toLowerCase();
+  if (v === 'false') return false;
+  return true; // ausente o inválido: activado por defecto (Req 14.7)
+}
+
+// ---- Carga para la Caja ----
+
+/** Parámetros activos que usa la pantalla de Caja en cada carga (Req 2.2, 2.3, 6.2, 14.8, 14.10). */
+export async function obtenerParametrosCaja(): Promise<ParametrosCaja> {
+  const [metodos, categoriasGasto, personas, categoriasProducto, config] = await Promise.all([
+    consultar<FilaMetodo[]>((s) =>
+      supabase
+        .from('metodos_pago')
+        .select(COLUMNAS_METODO)
+        .eq('activo', true)
+        .order('orden', { ascending: true })
+        .order('nombre', { ascending: true })
+        .abortSignal(s),
+    ),
+    consultar<FilaSimple[]>((s) =>
+      supabase
+        .from('categorias_gasto')
+        .select(COLUMNAS_SIMPLE)
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
+        .abortSignal(s),
+    ),
+    consultar<FilaSimple[]>((s) =>
+      supabase
+        .from('personas_caja')
+        .select(COLUMNAS_SIMPLE)
+        .eq('activo', true)
+        .order('nombre', { ascending: true })
+        .abortSignal(s),
+    ),
+    listarCategorias(),
+    consultar<{ clave: string; valor: string | null }[]>((s) =>
+      supabase
+        .from('configuracion')
+        .select('clave, valor')
+        .in('clave', ['base_caja_defecto', 'cajon_al_cobrar', 'cajon_en_turno'])
+        .abortSignal(s),
+    ),
+  ]);
+
+  const valores = new Map((config ?? []).map((f) => [f.clave, texto(f.valor)]));
+
+  return {
+    metodosPago: (metodos ?? []).map(aMetodo),
+    categoriasGasto: (categoriasGasto ?? []).map(aSimple),
+    personas: (personas ?? []).map(aSimple),
+    categoriasProducto,
+    baseCajaDefecto: leerBase(valores.get('base_caja_defecto')),
+    cajonAlCobrar: leerBooleano(valores.get('cajon_al_cobrar')),
+    cajonEnTurno: leerBooleano(valores.get('cajon_en_turno')),
+  };
+}
+
+// ---- Métodos de pago (Req 14.1, 14.2) ----
+
+export async function listarMetodosPago(): Promise<MetodoPagoParam[]> {
+  const filas = await consultar<FilaMetodo[]>((s) =>
+    supabase
+      .from('metodos_pago')
+      .select(COLUMNAS_METODO)
+      .order('orden', { ascending: true })
+      .order('nombre', { ascending: true })
+      .abortSignal(s),
+  );
+  return (filas ?? []).map(aMetodo);
+}
+
+export async function crearMetodoPago(datos: {
+  nombre: string;
+  esEfectivo: boolean;
+  orden: number;
+  activo?: boolean;
+}): Promise<MetodoPagoParam> {
+  const fila = await consultar<FilaMetodo>((s) =>
+    supabase
+      .from('metodos_pago')
+      .insert({
+        nombre: datos.nombre.trim(),
+        es_efectivo: datos.esEfectivo,
+        orden: datos.orden,
+        activo: datos.activo ?? true,
+      })
+      .select(COLUMNAS_METODO)
+      .abortSignal(s)
+      .single(),
+  );
+  return aMetodo(fila);
+}
+
+/** El trigger de la BD rechaza dejar sin método de efectivo activo → `SIN_METODO_EFECTIVO`. */
+export async function actualizarMetodoPago(
+  id: string,
+  cambios: { nombre?: string; activo?: boolean; esEfectivo?: boolean; orden?: number },
+): Promise<MetodoPagoParam> {
+  const fila: Record<string, unknown> = {};
+  if (cambios.nombre !== undefined) fila.nombre = cambios.nombre.trim();
+  if (cambios.activo !== undefined) fila.activo = cambios.activo;
+  if (cambios.esEfectivo !== undefined) fila.es_efectivo = cambios.esEfectivo;
+  if (cambios.orden !== undefined) fila.orden = cambios.orden;
+
+  const resultado = await consultar<FilaMetodo>((s) =>
+    supabase.from('metodos_pago').update(fila).eq('id', id).select(COLUMNAS_METODO).abortSignal(s).single(),
+  );
+  return aMetodo(resultado);
+}
+
+// ---- Categorías de gasto y personas de caja (Req 14.3, 14.4) ----
+
+type TablaSimple = 'categorias_gasto' | 'personas_caja';
+
+async function listarSimple(tabla: TablaSimple): Promise<FilaSimple[]> {
+  const filas = await consultar<FilaSimple[]>((s) =>
+    supabase.from(tabla).select(COLUMNAS_SIMPLE).order('nombre', { ascending: true }).abortSignal(s),
+  );
+  return (filas ?? []).map(aSimple);
+}
+
+async function crearSimple(tabla: TablaSimple, nombre: string, activo = true): Promise<FilaSimple> {
+  const fila = await consultar<FilaSimple>((s) =>
+    supabase
+      .from(tabla)
+      .insert({ nombre: nombre.trim(), activo })
+      .select(COLUMNAS_SIMPLE)
+      .abortSignal(s)
+      .single(),
+  );
+  return aSimple(fila);
+}
+
+async function actualizarSimple(
+  tabla: TablaSimple,
+  id: string,
+  cambios: { nombre?: string; activo?: boolean },
+): Promise<FilaSimple> {
+  const fila: Record<string, unknown> = {};
+  if (cambios.nombre !== undefined) fila.nombre = cambios.nombre.trim();
+  if (cambios.activo !== undefined) fila.activo = cambios.activo;
+
+  const resultado = await consultar<FilaSimple>((s) =>
+    supabase.from(tabla).update(fila).eq('id', id).select(COLUMNAS_SIMPLE).abortSignal(s).single(),
+  );
+  return aSimple(resultado);
+}
+
+export function listarCategoriasGasto(): Promise<CategoriaGastoParam[]> {
+  return listarSimple('categorias_gasto');
+}
+
+export function crearCategoriaGasto(nombre: string, activo = true): Promise<CategoriaGastoParam> {
+  return crearSimple('categorias_gasto', nombre, activo);
+}
+
+export function actualizarCategoriaGasto(
+  id: string,
+  cambios: { nombre?: string; activo?: boolean },
+): Promise<CategoriaGastoParam> {
+  return actualizarSimple('categorias_gasto', id, cambios);
+}
+
+export function listarPersonasCaja(): Promise<PersonaCajaParam[]> {
+  return listarSimple('personas_caja');
+}
+
+export function crearPersonaCaja(nombre: string, activo = true): Promise<PersonaCajaParam> {
+  return crearSimple('personas_caja', nombre, activo);
+}
+
+export function actualizarPersonaCaja(
+  id: string,
+  cambios: { nombre?: string; activo?: boolean },
+): Promise<PersonaCajaParam> {
+  return actualizarSimple('personas_caja', id, cambios);
+}
+
+// ---- Configuración (Req 14.5, 14.7, 14.12) ----
+
+/**
+ * Guarda una clave de `configuracion`: actualiza la fila existente o la crea si falta.
+ * Las claves `*_hash` están ocultas por RLS y se rechazan aquí.
+ */
+export async function guardarConfig(clave: ClaveConfigCaja | string, valor: string): Promise<void> {
+  const limpia = clave.trim();
+  if (limpia === '' || /_hash$/i.test(limpia)) throw new ErrorApp('DATOS_INVALIDOS');
+
+  const actualizadas = await consultar<{ clave: string }[]>((s) =>
+    supabase.from('configuracion').update({ valor }).eq('clave', limpia).select('clave').abortSignal(s),
+  );
+  if ((actualizadas ?? []).length > 0) return;
+
+  await consultar<null>((s) =>
+    supabase.from('configuracion').insert({ clave: limpia, valor }).abortSignal(s),
+  );
+}
+
+// ---- Productos en Caja (Req 14.6, 14.13) ----
+
+/** Todos los productos que no son materia prima, activos o no. */
+export async function productosConfigurables(): Promise<ProductoConfigurable[]> {
+  const filas = await consultar<FilaProducto[]>((s) =>
+    supabase
+      .from('productos')
+      .select(COLUMNAS_PRODUCTO)
+      // tipo_producto NULL en filas antiguas cuenta como 'normal'
+      .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
+      .order('orden_caja', { ascending: true })
+      .order('nombre', { ascending: true })
+      .abortSignal(s),
+  );
+  return (filas ?? []).map(aProducto);
+}
+
+export async function actualizarProductoCaja(
+  id: string,
+  cambios: { visibleCaja?: boolean; ordenCaja?: number; categoriaId?: string | null },
+): Promise<ProductoConfigurable> {
+  const fila: Record<string, unknown> = {};
+  if (cambios.visibleCaja !== undefined) fila.visible_caja = cambios.visibleCaja;
+  if (cambios.ordenCaja !== undefined) fila.orden_caja = cambios.ordenCaja;
+  if (cambios.categoriaId !== undefined) fila.categoria_id = cambios.categoriaId;
+
+  const resultado = await consultar<FilaProducto>((s) =>
+    supabase
+      .from('productos')
+      .update(fila)
+      .eq('id', id)
+      .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
+      .select(COLUMNAS_PRODUCTO)
+      .abortSignal(s)
+      .single(),
+  );
+  return aProducto(resultado);
+}
+
+/** Categorías de producto de la tabla `categorias`. */
+export async function listarCategorias(): Promise<CategoriaProducto[]> {
+  const filas = await consultar<CategoriaProducto[]>((s) =>
+    supabase.from('categorias').select('id, nombre').order('nombre', { ascending: true }).abortSignal(s),
+  );
+  return (filas ?? []).map((f) => ({ id: f.id, nombre: f.nombre }));
+}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button, Input, Select, type SelectOption } from '@/components/ui';
 import type { Producto } from '@/types/database';
 import { getPorcentajeProduccion } from '@/lib/api/configuracion';
+import { FotoProducto } from './FotoProducto';
 
 type TipoProducto = 'normal' | 'produccion' | 'materia_prima';
 
@@ -12,12 +13,16 @@ interface ProductoFormProps {
   onSubmit: (data: { 
     nombre: string; 
     precio_actual: number; 
+    /** Precio de venta al público en COP enteros (Caja). Solo se envía si aplica. */
+    precio_venta?: number | null;
     tipo_producto: TipoProducto;
     contenido_por_unidad?: number | null;
     unidad_medida?: string | null;
   }) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
+  /** Se llama cuando la foto del producto se sube o se quita (Req 10.1). */
+  onFotoCambio?: (nuevoPath: string | null) => void;
 }
 
 const unidadMedidaOptions: SelectOption[] = [
@@ -34,9 +39,13 @@ export function ProductoForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  onFotoCambio,
 }: ProductoFormProps) {
   const [nombre, setNombre] = useState(producto?.nombre || '');
   const [precio, setPrecio] = useState(producto?.precio_actual?.toString() || '');
+  const [precioVenta, setPrecioVenta] = useState(
+    producto?.precio_venta !== null && producto?.precio_venta !== undefined ? String(producto.precio_venta) : ''
+  );
   const [tipoProducto, setTipoProducto] = useState<TipoProducto>(
     (producto?.tipo_producto as TipoProducto) || 'normal'
   );
@@ -89,6 +98,14 @@ export function ProductoForm({
       }
     }
 
+    // Precio de venta al público: opcional, peso entero (la Caja no maneja centavos)
+    if (tipoProducto !== 'materia_prima' && precioVenta.trim()) {
+      const venta = precioVenta.trim();
+      if (!/^\d+$/.test(venta) || Number(venta) > 99_999_999) {
+        newErrors.precioVenta = 'Ingresa un valor entero en pesos, sin puntos ni decimales';
+      }
+    }
+
     // Validación para materia prima
     if (tipoProducto === 'materia_prima') {
       if (!contenidoPorUnidad.trim()) {
@@ -110,9 +127,23 @@ export function ProductoForm({
 
     if (!validate()) return;
 
+    // precio_venta: la materia prima no se vende (null). Si el campo está vacío y el producto
+    // no tenía la columna (migración sin aplicar), no se envía para no romper el guardado.
+    const ventaTexto = precioVenta.trim();
+    const columnaVentaExiste = producto ? producto.precio_venta !== undefined : false;
+    let precio_venta: number | null | undefined;
+    if (tipoProducto === 'materia_prima') {
+      precio_venta = columnaVentaExiste ? null : undefined;
+    } else if (ventaTexto) {
+      precio_venta = Number(ventaTexto);
+    } else {
+      precio_venta = columnaVentaExiste ? null : undefined;
+    }
+
     await onSubmit({
       nombre: nombre.trim(),
       precio_actual: parseFloat(precio) || 0,
+      ...(precio_venta !== undefined ? { precio_venta } : {}),
       tipo_producto: tipoProducto,
       contenido_por_unidad: tipoProducto === 'materia_prima' ? parseFloat(contenidoPorUnidad) : null,
       unidad_medida: tipoProducto === 'materia_prima' ? unidadMedida : null,
@@ -122,11 +153,11 @@ export function ProductoForm({
   const getPrecioLabel = () => {
     switch (tipoProducto) {
       case 'produccion':
-        return 'Precio de venta (se aplicará descuento)';
+        return 'Precio para inventario (se aplicará descuento)';
       case 'materia_prima':
         return 'Precio por unidad (bulto, kilo, etc.)';
       default:
-        return 'Precio unitario';
+        return 'Costo unitario (para inventario)';
     }
   };
 
@@ -163,7 +194,26 @@ export function ProductoForm({
         disabled={isLoading}
       />
 
-      {/* Campos adicionales para Materia Prima */}
+      {tipoProducto !== 'materia_prima' && (
+        <div className="space-y-1">
+          <Input
+            label="Precio de venta al público (Caja)"
+            type="text"
+            value={precioVenta}
+            onChange={(e) => setPrecioVenta(e.target.value.replace(/[^\d]/g, ''))}
+            error={errors.precioVenta}
+            placeholder="Ej: 2500"
+            inputMode="numeric"
+            maxLength={8}
+            disabled={isLoading}
+          />
+          {!errors.precioVenta && (
+            <p className="text-xs text-gray-500">
+              Es lo que cobra el cajero. Si lo dejas vacío, el producto no aparece en la Caja.
+            </p>
+          )}
+        </div>
+      )}
       {tipoProducto === 'materia_prima' && (
         <>
           <div className="grid grid-cols-2 gap-3">
@@ -202,6 +252,15 @@ export function ProductoForm({
             💡 Se aplicará <strong>{porcentajeDescuento}%</strong> de descuento al calcular el valor del inventario
           </p>
         </div>
+      )}
+
+      {/* Foto: solo al editar un producto que no es materia prima (Req 10.1) */}
+      {producto && tipoProducto !== 'materia_prima' && (
+        <FotoProducto
+          productoId={producto.id}
+          imagenPath={producto.imagen_path ?? null}
+          onCambio={onFotoCambio}
+        />
       )}
 
       <div className="flex gap-3 pt-4">

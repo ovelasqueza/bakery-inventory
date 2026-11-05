@@ -1,0 +1,213 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Medidas del encabezado y del botón flotante en `src/lib/caja/layout.ts`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668238
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855672741
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855767066
+      }
+    ],
+    "1.4 Cobro directo en `src/lib/caja/cobro.ts`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668256
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855673939
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855768276
+      }
+    ],
+    "2.1 Grupo_Acciones dentro de `EncabezadoCaja`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668275
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855777225
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855950513
+      }
+    ],
+    "2.2 Variante flotante de `BotonAbrirCajon`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668289
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855675149
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855769468
+      }
+    ],
+    "2.3 Títulos de las ventanas": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668311
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855675932
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855770531
+      }
+    ],
+    "2.4 Espacio bajo el botón flotante": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668326
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855778371
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855951720
+      }
+    ],
+    "3.1 Hooks de clave y cobro": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668342
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855676931
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855685935
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855777245
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855953910
+      }
+    ],
+    "3.2 Selector de método en `PanelValores`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668359
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855779196
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855952913
+      }
+    ],
+    "4.1 Conectar encabezado, botón flotante y cobro directo en `src/components/caja/PuntoVenta.tsx`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668380
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855957950
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793856254924
+      }
+    ],
+    "5. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855668403
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793856255862
+      },
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793856308935
+      }
+    ],
+    "1. Dominio puro": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855768297
+      }
+    ],
+    "2. Encabezado, nombres y cajón flotante": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855951739
+      }
+    ],
+    "3. Cobro directo de la Calculadora": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793855953930
+      }
+    ],
+    "4. Conexión en `PuntoVenta`": [
+      {
+        "executionId": "addfd806-b004-4806-af90-699d13e7241f",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793856254946
+      }
+    ]
+  }
+}

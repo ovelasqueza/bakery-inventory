@@ -1,0 +1,94 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Prop `modo` en `TarjetaProducto` y `CuadriculaProductos`": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252344
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889264306
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889540941
+      }
+    ],
+    "2.1 Prop `modo` en `PanelCarrito`": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252399
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889547978
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889669149
+      }
+    ],
+    "3.1 Crear `FranjaAutoconsumo` y conectarla en `src/components/caja/PuntoVenta.tsx`": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252427
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889680446
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889874896
+      }
+    ],
+    "4. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252443
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890203318
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890315829
+      }
+    ],
+    "1. Tarjeta y cuadrícula en modo autoconsumo": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889540963
+      }
+    ],
+    "2. Panel derecho en modo autoconsumo": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889669174
+      }
+    ],
+    "3. Franja y conexión en `PuntoVenta`": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889874915
+      }
+    ]
+  }
+}

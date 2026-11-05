@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_dashboard" name="shell-type"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "warm-linen": "#F7F5F0",
+            "warm-oat": "#EFECE6",
+            "warm-sand": "#E7E2D8",
+            "sage-dark": "#244936",
+            "sage-primary": "#2D5A43",
+            "sage-medium": "#3C7356",
+            "sage-light": "#E9EFEA",
+            "sage-tint": "#D5E3D8",
+            "amber-crust": "#D9822B",
+            "amber-warm": "#E8973D",
+            "amber-light": "#FAF1E6",
+            "charcoal-dark": "#1F2421",
+            "charcoal-muted": "#545B56",
+            "surface-pure": "#FFFFFF",
+            "border-subtle": "#E2DDD3",
+          },
+          fontFamily: {
+            sans: ["'Plus Jakarta Sans'", "sans-serif"],
+            display: ["'Space Grotesk'", "sans-serif"]
+          },
+          boxShadow: {
+            'soft': '0 2px 10px rgba(31, 36, 33, 0.04)',
+            'card': '0 3px 14px rgba(31, 36, 33, 0.05)',
+            'float': '0 8px 30px rgba(45, 90, 67, 0.12)',
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-warm-linen font-sans text-charcoal-dark select-none min-h-screen antialiased">
+<!-- ASIDE: Navigation Rail (Ergonomic for 24" touch POS) -->
+<aside class="fixed left-0 top-0 h-full w-24 bg-warm-oat border-r border-border-subtle z-50 flex flex-col items-center justify-between py-4 shadow-sm">
+<div class="flex flex-col items-center gap-3 w-full">
+<!-- Boutique Logo Badge -->
+<div class="w-16 h-14 bg-surface-pure rounded-2xl shadow-soft p-1.5 flex items-center justify-center border border-border-subtle hover:scale-105 transition-transform cursor-pointer">
+<img alt="Liz Pan Logo" class="w-full h-full object-contain drop-shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvp_DEtI9AU2BUS_ydzUkTCSOWmqSHLa0Bnh0w9fHFeCs-aY7GzeKDTPWmRMTrpR8GvWAbO1cSsUVpyI-jJ-dSpeqQDnM3_bNDbkOshnEXIwhgaMvy85GnotFlMl98HDJKhDToLYw_VDMjJtVLKe6tQMGSuXASXnONVagQrcgOVIdaxtdJgG4hO_bJWF6JhjNmLZ6qxeGM9rj5HCWgt4ZjWgZSPbImVfmT-UpLUcBdV6X9-7U-KF12pw"/>
+</div>
+<span class="text-[10px] font-bold tracking-widest text-sage-primary uppercase font-display">LIZ PAN</span>
+</div>
+<!-- Main Navigation Icons -->
+<nav class="flex flex-col gap-2 w-full px-2">
+<a class="flex flex-col items-center justify-center h-20 rounded-2xl bg-sage-primary text-white shadow-sm transition-all" data-path="venta-catalogo" href="#">
+<span class="material-symbols-outlined text-2xl">point_of_sale</span>
+<span class="text-[11px] font-bold mt-1 tracking-tight">Venta</span>
+</a>
+<a class="flex flex-col items-center justify-center h-20 rounded-2xl text-charcoal-muted hover:bg-surface-pure hover:text-sage-primary transition-all" data-path="cobro-liquidacion" href="#">
+<span class="material-symbols-outlined text-2xl">payments</span>
+<span class="text-[11px] font-semibold mt-1 tracking-tight">Cobro</span>
+</a>
+<a class="flex flex-col items-center justify-center h-20 rounded-2xl text-charcoal-muted hover:bg-surface-pure hover:text-sage-primary transition-all" data-path="pedidos-encargos" href="#">
+<span class="material-symbols-outlined text-2xl">receipt_long</span>
+<span class="text-[11px] font-semibold mt-1 tracking-tight">Pedidos</span>
+</a>
+<a class="flex flex-col items-center justify-center h-20 rounded-2xl text-charcoal-muted hover:bg-surface-pure hover:text-sage-primary transition-all" data-path="cierre-caja" href="#">
+<span class="material-symbols-outlined text-2xl">lock_clock</span>
+<span class="text-[11px] font-semibold mt-1 tracking-tight">Arqueo</span>
+</a>
+</nav>
+<!-- Bottom Actions -->
+<div class="flex flex-col items-center gap-2 w-full px-2">
+<button class="w-14 h-14 rounded-2xl bg-[#FDEAE8] text-[#C03728] border border-[#F8C8C3] flex items-center justify-center hover:opacity-90 active:scale-95 transition-transform" title="Asistencia / Ayuda Supervisor" type="button">
+<span class="material-symbols-outlined text-2xl">support_agent</span>
+</button>
+<button class="w-14 h-14 rounded-2xl bg-surface-pure text-charcoal-muted border border-border-subtle flex items-center justify-center hover:text-sage-primary active:scale-95 transition-all" title="Ajustes de terminal" type="button">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+</div>
+</aside>
+<!-- CONTENT WRAPPER -->
+<div class="pl-24">
+<!-- TOP HEADER -->
+<header class="fixed top-0 left-24 right-0 h-20 bg-warm-linen/95 backdrop-blur-md border-b border-border-subtle z-40 flex items-center justify-between px-8">
+<div class="flex items-center gap-4">
+<!-- Brand / Identity Tag -->
+<div class="flex items-center gap-3 bg-surface-pure px-4 py-2 rounded-2xl border border-border-subtle shadow-soft">
+<div class="w-8 h-8 rounded-xl bg-sage-light flex items-center justify-center">
+<span class="material-symbols-outlined text-sage-primary text-xl">bakery_dining</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-sage-medium animate-pulse"></span>
+<span class="text-xs font-bold uppercase tracking-wider text-charcoal-dark">Caja Principal 01</span>
+</div>
+<p class="text-[11px] text-charcoal-muted">Boutique &amp; Panadería Artesanal • Mañana</p>
+</div>
+</div>
+<!-- Mode switcher -->
+<nav class="hidden md:flex items-center gap-1.5 p-1 bg-warm-oat rounded-2xl border border-border-subtle">
+<a class="px-4 py-2 rounded-xl text-xs font-bold bg-surface-pure text-sage-primary shadow-soft tracking-wide" href="#">Venta / Catálogo</a>
+<a class="px-4 py-2 rounded-xl text-xs font-semibold text-charcoal-muted hover:text-charcoal-dark transition-colors" href="#">Cobro / Liquidación</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<!-- Live Clock -->
+<div class="flex flex-col items-end">
+<span class="font-display text-2xl font-bold text-charcoal-dark tracking-tight leading-none">10:42</span>
+<span class="text-[11px] font-semibold text-charcoal-muted uppercase tracking-wider mt-0.5">Viernes, 24 Octubre</span>
+</div>
+<!-- Cashier Status & Operator -->
+<div class="flex items-center gap-3 pl-6 border-l border-border-subtle">
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold text-charcoal-dark">M. Salazar</span>
+<span class="text-[10px] font-extrabold uppercase tracking-widest text-amber-crust bg-amber-light px-2 py-0.5 rounded-md">Cajero Titular</span>
+</div>
+<div class="w-11 h-11 rounded-2xl bg-sage-tint border-2 border-surface-pure flex items-center justify-center text-sage-dark font-bold shadow-soft">
+            MS
+          </div>
+<button class="w-11 h-11 rounded-2xl bg-surface-pure border border-border-subtle text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors" title="Cerrar Turno" type="button">
+<span class="material-symbols-outlined text-xl">logout</span>
+</button>
+</div>
+</div>
+</header>
+<!-- MAIN TOUCH POS WORKSPACE -->
+<main class="pt-24 px-8 pb-8 min-h-screen">
+<div class="grid grid-cols-12 gap-6 w-full items-start">
+<!-- LEFT PANE: CATALOG & TOUCH FAST BUTTONS (8 COLS) -->
+<div class="col-span-12 xl:col-span-8 flex flex-col gap-4">
+<!-- Action Bar: Large Touch Search & Fast Hot-Keys -->
+<div class="bg-surface-pure p-3.5 rounded-2xl border border-border-subtle shadow-card flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+<!-- Search bar -->
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-muted text-2xl pointer-events-none">search</span>
+<input class="w-full h-14 pl-12 pr-14 bg-warm-linen rounded-xl text-base font-medium text-charcoal-dark placeholder:text-charcoal-muted/70 focus:bg-surface-pure focus:outline-none focus:ring-2 focus:ring-sage-primary/40 border border-transparent focus:border-sage-primary transition-all" id="productSearchInput" placeholder="Buscar pan de masa madre, café, croissants o escanear..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg bg-warm-oat text-charcoal-muted hover:text-sage-primary active:scale-95 flex items-center justify-center transition-all" onclick="triggerBarcodeBeep()" title="Simular Escaneo" type="button">
+<span class="material-symbols-outlined text-2xl">barcode_scanner</span>
+</button>
+</div>
+<!-- Quick touch shortcuts -->
+<div class="flex items-center gap-2.5 shrink-0">
+<button class="h-14 px-5 bg-amber-light text-amber-crust border border-amber-crust/30 hover:bg-amber-warm hover:text-white active:scale-95 rounded-xl font-bold text-sm flex items-center gap-2 transition-all" onclick="filterQuickBadge('recien-salido')" type="button">
+<span class="material-symbols-outlined text-2xl">local_fire_department</span>
+<span>Recién Salido</span>
+</button>
+<button class="h-14 px-5 bg-sage-light text-sage-primary border border-sage-tint hover:bg-sage-tint active:scale-95 rounded-xl font-bold text-sm flex items-center gap-2 transition-all" onclick="openQuickNumberPadModal()" type="button">
+<span class="material-symbols-outlined text-2xl">scale</span>
+<span>PLU / Balanza</span>
+</button>
+</div>
+</div>
+<!-- Category Pills Ribbon (Craft & Sage Styling) -->
+<div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar select-none" id="categoriesRibbon">
+<button class="cat-pill active h-12 px-6 rounded-xl font-bold text-sm bg-sage-primary text-white shadow-soft shrink-0 transition-all flex items-center gap-2" onclick="filterCategory('todos', this)">
+<span class="material-symbols-outlined text-xl">all_inclusive</span>
+<span>Todos (28)</span>
+</button>
+<button class="cat-pill h-12 px-6 rounded-xl font-semibold text-sm bg-surface-pure text-charcoal-dark border border-border-subtle hover:border-sage-medium hover:bg-sage-light/40 shrink-0 transition-all flex items-center gap-2" onclick="filterCategory('panaderia', this)">
+<span class="material-symbols-outlined text-xl text-amber-crust">bakery_dining</span>
+<span>Panadería Caliente</span>
+</button>
+<button class="cat-pill h-12 px-6 rounded-xl font-semibold text-sm bg-surface-pure text-charcoal-dark border border-border-subtle hover:border-sage-medium hover:bg-sage-light/40 shrink-0 transition-all flex items-center gap-2" onclick="filterCategory('hojaldres', this)">
+<span class="material-symbols-outlined text-xl text-sage-medium">cookie</span>
+<span>Hojaldres &amp; Facturas</span>
+</button>
+<button class="cat-pill h-12 px-6 rounded-xl font-semibold text-sm bg-surface-pure text-charcoal-dark border border-border-subtle hover:border-sage-medium hover:bg-sage-light/40 shrink-0 transition-all flex items-center gap-2" onclick="filterCategory('cafeteria', this)">
+<span class="material-symbols-outlined text-xl text-amber-crust">coffee</span>
+<span>Cafetería &amp; Bebidas</span>
+</button>
+<button class="cat-pill h-12 px-6 rounded-xl font-semibold text-sm bg-surface-pure text-charcoal-dark border border-border-subtle hover:border-sage-medium hover:bg-sage-light/40 shrink-0 transition-all flex items-center gap-2" onclick="filterCategory('combos', this)">
+<span class="material-symbols-outlined text-xl text-sage-primary">breakfast_dining</span>
+<span>Combos Desayuno</span>
+</button>
+</div>
+<!-- Touch Product Grid: Large 24" touch-optimized product cards -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="productGrid">
+<!-- Tile 1: Pan Francés Crujiente -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="panaderia" data-name="Pan Francés Crujiente" onclick="addToTicket('Pan Francés Crujiente', 1200, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-amber-light text-amber-crust font-bold text-[11px]">Horno 08:30</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#01</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Pan Francés Crujiente" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmZr76O0cz1o-Y_EoSloegKQQ8Vtl8XCb0-6D4WGaXoRyvTw_eFc4BAKtbTjMHy1wJDqow8A8eXCCQiG002NvGfPKxKUl9xmZmKhncNMTfB22S-M-iifzjTKVL60Tzk-KJD3ogjZjvlSgsjbRHf_9_-Ny4QLc8c6lfIaWebJ3_aKdXWR3Y2BpAS7UrZHAAidVOAnMHPiO4MC3bj1GLP9glgut7baSeYbReOW-n_qyN"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Pan Francés Crujiente</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Por unidad (120g)</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 1.200</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Pan Francés Crujiente', 1200, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 2: Medialuna de Manteca -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="hojaldres" data-name="Medialuna Manteca" onclick="addToTicket('Medialuna Manteca', 1400, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-warm-oat text-charcoal-dark font-bold text-[11px]">Almíbar Puro</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#02</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Medialuna Manteca" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9GwBITmtQKI1NK-BukBkF0N6ubB8qjQvNADB2D4CyboFUGILT-s98bsMSSDF1NFoUmLOURqD7eyi7P9_fz6xnwEUweQg5myEWMBsKE8DbKaUWOyMIqmOfgNAGfhSI6u2IW8akPNCQdPyasfQC0dZEu4p7rQjeAeGL_cTGy8Pqd3H9gT4xYAxikhdSiw_xT9mFSrguqj1MhdaCrb8BBVKvjEv6gfN81uINTSz4RgE_"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Medialuna Manteca</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Hojaldre dulce tradicional</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 1.400</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Medialuna Manteca', 1400, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 3: Pan de Campo Masa Madre -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="panaderia" data-name="Hogaza Masa Madre" onclick="addToTicket('Hogaza Masa Madre', 4800, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-sage-light text-sage-dark font-bold text-[11px]">Masa Madre 24h</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#03</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Hogaza Masa Madre" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfte8KXMKYbQh4Hul8d3L_uI3fdFn6iOOFMO44Hxc1APNgdJNCzxYBIrolDmCVBIsqkxSDg8khAFYBZBI8qhsYULt-40TYPc97KoZNaSebPqrsM2mMd5zfPAOgOK_J7PKfy7EAw8vQ2QPnRMhdZeYdsXodCfd_fs9S0QbFY3lug8pQCVTaEze9XsRXxwLNA9vTxA1zLfXbXMv-X1q6hZjeD4wAMhaYhHB9y2xzUOKR"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Hogaza Masa Madre</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Pieza entera 750g</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 4.800</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Hogaza Masa Madre', 4800, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 4: Café Latte Doble -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="cafeteria" data-name="Café Latte Doble" onclick="addToTicket('Café Latte Doble', 2900, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-amber-light text-amber-crust font-bold text-[11px]">Espresso Bar</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#04</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Café Latte Doble" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6iUgiL7LrsBYdVaniEOPjKQG0bV2hBdMDCrfbiEXnEMU8zpDTz3Asq8newpwWl2ozN4gXlpgmHObH6N1NSi2pFpCRoDeonhHDqIcHwyidt3gg1teInwHJ4jH4AtNWH839YyYy18pRMmPsNpdfVGCkKhMavwQnTKqUDjAD_67j5FyYomn2rtxNC53QMAoSx2GKUQRT7rLMf34hrBcR3sKIIEUQT763Vptk1NGKwjSk"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Café Latte Doble</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Vaso cerámico / térmico 350ml</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 2.900</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Café Latte Doble', 2900, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 5: Vigilante Pastelera -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="hojaldres" data-name="Vigilante Pastelera" onclick="addToTicket('Vigilante Pastelera', 1500, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-warm-oat text-charcoal-dark font-bold text-[11px]">Especial Dulce</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#05</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Vigilante Pastelera" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCkGidhlp-XIKHHTKVl8OpvrFV_rdrW_zbtHiYfdw_pblHjng1rV7KsIXxA6ceZUKGP327VTnWOqqmjUDbLGK4UtL8RDxJ01yBHIdvJrcESmctjLx6UAkwElJb7sJK2KVE6GZ2hoJW4amUn_EpmdmgkblE6AjQUJt73KHfU9O66WX_7CK56Ui0pp5oUq8G53ym_TWE7Waa1j_4UzhzG4wWXM6OnyDrrKrlJek4Tqta"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Vigilante Pastelera</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Crema casera &amp; cereza</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 1.500</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Vigilante Pastelera', 1500, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 6: Chipá Queso x100g -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="panaderia" data-name="Chipá Queso x100g" onclick="addToTicket('Chipá Queso x100g', 2200, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-sage-light text-sage-dark font-bold text-[11px]">Sin TACC</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#06</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Chipá Queso x100g" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-2rLVKSVwVorAvRIRWn1W8jv3t0wuFLIa5Xdl48w85Zm8s3c0Rli-OTe2RX1VWhpxV_X9-8XDZ4UFJE8U1mR1gqSRlPZgyv5G5q5kPrHLtaWRki7s8KbXYG4dAHnDvCt3yGulmISt7IqKgAMk3ahRUhVSPfy_SySMv8_lDV_t6UMfG7jF6aaBUHFL8FQOu65xdnv7KSRyi5MzoG57LPx8KBMB9UFmbPrQiOrrTSIu"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Chipá Queso x100g</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Queso sardo y gouda</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 2.200</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Chipá Queso x100g', 2200, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 7: Combo Desayuno Liz Pan -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="combos" data-name="Combo Café + 2 Medialunas" onclick="addToTicket('Combo Café + 2 Medialunas', 4900, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-amber-warm text-white font-bold text-[11px] shadow-xs">Sugerido</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#07</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Combo Café + 2 Medialunas" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKTUcJpOp79nDbNJ3LKXrrWETugnMxqiqfV3BzHhFnoBhX9gCiOMz2e8EVFo0nxZwkAtkuhQdB0NSlaBvVapHU44JGMi6LbTcwg074CDtBeCAay9A9V5GlVtoMjkL7cROXYz_eLB_20EcV629FCcPMLyi_PmSLQLqri_8Y_FcXmtwc2Pae3X07ty5dY3L8hHs6DM0paFkPtuhzamBGfN-XFBFcC9enIIFOJc8mo_xc"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Combo Café + 2 Medialunas</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Latte o espresso + jugo</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 4.900</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Combo Café + 2 Medialunas', 4900, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+<!-- Tile 8: Baguette Tradición -->
+<div class="product-card group relative bg-surface-pure rounded-2xl p-3.5 border border-border-subtle shadow-card hover:border-sage-medium hover:shadow-float transition-all cursor-pointer flex flex-col justify-between" data-category="panaderia" data-name="Baguette Tradición" onclick="addToTicket('Baguette Tradición', 1800, 1)">
+<div>
+<div class="flex items-center justify-between gap-1 mb-2">
+<span class="px-2.5 py-0.5 rounded-md bg-warm-oat text-charcoal-dark font-bold text-[11px]">Horno a Leña</span>
+<span class="text-[11px] font-mono text-charcoal-muted">#08</span>
+</div>
+<div class="relative w-full h-32 rounded-xl overflow-hidden mb-3 bg-warm-sand">
+<img alt="Baguette Tradición" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxrN65lB8Fekxnj0vV6wq-Pewt8xbRoSTbmAs2r85jjvjq5XHl7LZOQmA2m2CUHRzdlwE9hw5K7u5ORJIwydrf_2iTdmF3prinzNoIT2yBlGTre4eIvs3xq5hXAGKgVB6SqGYBaMpgY2byoN4smOdHMqldVsiERJ5atQJDq--rhng24iiIOdyaQe-qrTHWuhXGDgr5eXOMwz5B7_tGhAS2XIJxgiJCNX-tlqVtf0_K"/>
+</div>
+<h3 class="text-sm font-bold text-charcoal-dark line-clamp-1 leading-snug">Baguette Tradición</h3>
+<p class="text-xs text-charcoal-muted mt-0.5">Larga fermentación 250g</p>
+</div>
+<div class="mt-3 pt-2.5 flex items-center justify-between border-t border-warm-oat">
+<span class="font-display text-xl font-bold text-sage-dark tracking-tight">$ 1.800</span>
+<button class="w-12 h-12 rounded-xl bg-sage-primary text-white hover:bg-sage-dark active:scale-90 flex items-center justify-center shadow-soft transition-all" onclick="event.stopPropagation(); addToTicket('Baguette Tradición', 1800, 1)" type="button">
+<span class="material-symbols-outlined text-2xl font-bold">add</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Cashier Quick Indicators -->
+<div class="bg-surface-pure border border-border-subtle p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs text-charcoal-muted">
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 font-semibold uppercase tracking-wider text-[11px]">
+<kbd class="px-2 py-0.5 bg-warm-oat rounded text-charcoal-dark font-mono font-bold">F1</kbd> Buscar
+              </span>
+<span class="flex items-center gap-1 font-semibold uppercase tracking-wider text-[11px]">
+<kbd class="px-2 py-0.5 bg-warm-oat rounded text-charcoal-dark font-mono font-bold">F4</kbd> Cliente Frecuente
+              </span>
+<span class="flex items-center gap-1 font-semibold uppercase tracking-wider text-[11px]">
+<kbd class="px-2 py-0.5 bg-warm-oat rounded text-charcoal-dark font-mono font-bold">F8</kbd> Descuento %
+              </span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-sage-medium animate-pulse"></span>
+<span class="font-medium">Impresora Fiscal Térmica: Online (Papel 92%)</span>
+</div>
+</div>
+</div>
+<!-- RIGHT PANE: PERSISTENT TICKET DOCK & CHECKOUT CONTROLLER (4 COLS) -->
+<div class="col-span-12 xl:col-span-4 sticky top-24 flex flex-col">
+<div class="bg-surface-pure rounded-2xl border border-border-subtle shadow-card flex flex-col h-[calc(100vh-7.5rem)] overflow-hidden">
+<!-- Ticket Header -->
+<div class="p-4 bg-warm-oat/70 border-b border-border-subtle flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="font-display text-xl font-bold text-charcoal-dark tracking-tight" id="ticketNumberDisplay">Ticket #0184</span>
+<span class="px-2.5 py-0.5 rounded-full bg-sage-light text-sage-dark text-xs font-bold tracking-wide">En Curso</span>
+</div>
+<!-- Service Type selector -->
+<button class="h-10 px-3 bg-surface-pure hover:bg-warm-linen border border-border-subtle rounded-xl text-charcoal-dark font-semibold text-xs flex items-center gap-1.5 shadow-soft transition-all" id="orderTypeBtn" onclick="toggleOrderType()" type="button">
+<span class="material-symbols-outlined text-lg text-amber-crust">takeout_dining</span>
+<span id="orderTypeLabel">Para Llevar</span>
+</button>
+</div>
+<!-- Customer / Loyalty Pill -->
+<div class="flex items-center justify-between bg-surface-pure px-3.5 py-2.5 rounded-xl border border-border-subtle">
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-7 h-7 rounded-lg bg-warm-sand flex items-center justify-center text-charcoal-muted">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div class="flex flex-col truncate">
+<span class="text-xs font-bold text-charcoal-dark truncate">Consumidor Final (DNI: S/N)</span>
+<span class="text-[10px] font-semibold text-amber-crust">Club Liz Pan: 120 Puntos</span>
+</div>
+</div>
+<button class="w-8 h-8 rounded-lg bg-warm-linen text-charcoal-muted hover:text-sage-primary hover:bg-sage-light flex items-center justify-center transition-colors" title="Asignar Cliente" type="button">
+<span class="material-symbols-outlined text-lg">edit</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Items List -->
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-2 divide-y divide-warm-oat" id="ticketItemsList">
+<!-- Default hydrated items -->
+<div class="ticket-item py-2.5 flex items-center justify-between gap-2" data-item-id="item-1" data-unit-price="4900">
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-charcoal-dark truncate">Combo Café + 2 Medialunas</h4>
+<p class="text-xs text-charcoal-muted">$ 4.900 c/u</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center bg-warm-oat rounded-xl p-0.5 border border-border-subtle">
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-[#FDEAE8] hover:text-[#C03728] text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-1', -1)">-</button>
+<span class="w-8 text-center font-display font-bold text-sm text-charcoal-dark item-qty">1</span>
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-sage-light hover:text-sage-dark text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-1', 1)">+</button>
+</div>
+<span class="w-20 text-right font-display font-bold text-sm text-charcoal-dark item-total">$ 4.900</span>
+<button class="w-8 h-8 rounded-lg text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors" onclick="removeItem('item-1')">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+</div>
+<div class="ticket-item py-2.5 flex items-center justify-between gap-2" data-item-id="item-2" data-unit-price="4800">
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-charcoal-dark truncate">Hogaza Masa Madre</h4>
+<p class="text-xs text-charcoal-muted">$ 4.800 c/u</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center bg-warm-oat rounded-xl p-0.5 border border-border-subtle">
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-[#FDEAE8] hover:text-[#C03728] text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-2', -1)">-</button>
+<span class="w-8 text-center font-display font-bold text-sm text-charcoal-dark item-qty">1</span>
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-sage-light hover:text-sage-dark text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-2', 1)">+</button>
+</div>
+<span class="w-20 text-right font-display font-bold text-sm text-charcoal-dark item-total">$ 4.800</span>
+<button class="w-8 h-8 rounded-lg text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors" onclick="removeItem('item-2')">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+</div>
+<div class="ticket-item py-2.5 flex items-center justify-between gap-2" data-item-id="item-3" data-unit-price="2400">
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-charcoal-dark truncate">Pan Francés Crujiente</h4>
+<p class="text-xs text-charcoal-muted">$ 1.200 c/u</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center bg-warm-oat rounded-xl p-0.5 border border-border-subtle">
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-[#FDEAE8] hover:text-[#C03728] text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-3', -1)">-</button>
+<span class="w-8 text-center font-display font-bold text-sm text-charcoal-dark item-qty">2</span>
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-sage-light hover:text-sage-dark text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-3', 1)">+</button>
+</div>
+<span class="w-20 text-right font-display font-bold text-sm text-charcoal-dark item-total">$ 2.400</span>
+<button class="w-8 h-8 rounded-lg text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors" onclick="removeItem('item-3')">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+</div>
+<div class="ticket-item py-2.5 flex items-center justify-between gap-2" data-item-id="item-4" data-unit-price="2400">
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-bold text-charcoal-dark truncate">Medialuna Manteca</h4>
+<p class="text-xs text-charcoal-muted">$ 1.200 prom c/u</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center bg-warm-oat rounded-xl p-0.5 border border-border-subtle">
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-[#FDEAE8] hover:text-[#C03728] text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-4', -1)">-</button>
+<span class="w-8 text-center font-display font-bold text-sm text-charcoal-dark item-qty">2</span>
+<button class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-sage-light hover:text-sage-dark text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all" onclick="updateQty('item-4', 1)">+</button>
+</div>
+<span class="w-20 text-right font-display font-bold text-sm text-charcoal-dark item-total">$ 2.400</span>
+<button class="w-8 h-8 rounded-lg text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors" onclick="removeItem('item-4')">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Ticket Financial Summary -->
+<div class="p-4 bg-warm-oat/70 border-t border-border-subtle flex flex-col gap-2.5">
+<div class="flex items-center justify-between text-xs text-charcoal-muted">
+<span>Subtotal Artículos (<span id="totalItemsCount">6</span>)</span>
+<span class="font-display font-bold text-charcoal-dark" id="subtotalDisplay">$ 14.500</span>
+</div>
+<div class="flex items-center justify-between text-xs text-charcoal-muted">
+<span>IVA Incluido (21%)</span>
+<span class="font-display font-bold text-charcoal-dark">$ 0</span>
+</div>
+<div class="flex items-center justify-between text-xs text-amber-crust font-semibold">
+<span>Descuento Cortesía Liz Pan</span>
+<span class="font-display font-bold">-$ 0</span>
+</div>
+<!-- Hero Grand Total Box -->
+<div class="mt-1 p-3.5 rounded-2xl bg-surface-pure border border-border-subtle shadow-soft flex items-center justify-between">
+<div>
+<span class="text-[11px] font-extrabold uppercase tracking-wider text-charcoal-muted">TOTAL A PAGAR</span>
+<p class="text-[11px] text-amber-crust font-semibold">ARS • Efectivo / QR / Débito</p>
+</div>
+<span class="font-display text-3xl font-extrabold text-sage-dark tracking-tight" id="grandTotalDisplay">
+                  $ 14.500
+                </span>
+</div>
+<!-- Checkout Primary Touch Button -->
+<button class="w-full h-16 mt-1 rounded-2xl bg-sage-dark text-white hover:bg-sage-primary active:scale-[0.98] flex items-center justify-between px-5 shadow-soft border border-sage-medium transition-all group" onclick="proceedToPayment()" type="button">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 rounded-xl bg-sage-medium/50 flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-2xl text-amber-warm">payments</span>
+</div>
+<div class="flex flex-col text-left">
+<span class="font-display text-lg font-bold tracking-wide leading-none">IR A COBRAR</span>
+<span class="text-[11px] text-sage-tint/80 mt-1 font-mono">Atajo Teclado: F12</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-xl bg-amber-crust text-white flex items-center justify-center shadow-sm group-hover:translate-x-1 transition-transform">
+<span class="material-symbols-outlined text-2xl font-bold">arrow_forward</span>
+</div>
+</button>
+<!-- Secondary Row Actions: Hold & Clear -->
+<div class="grid grid-cols-2 gap-2 pt-1">
+<button class="h-12 rounded-xl bg-surface-pure border border-border-subtle text-charcoal-muted hover:text-sage-dark hover:bg-warm-linen active:scale-95 flex items-center justify-center gap-2 font-bold text-xs transition-all" onclick="holdOrder()" type="button">
+<span class="material-symbols-outlined text-lg text-amber-crust">pause_circle</span>
+<span>Poner en Pausa</span>
+</button>
+<button class="h-12 rounded-xl bg-[#FDEAE8] text-[#C03728] border border-[#F8C8C3] hover:bg-[#FCDAD6] active:scale-95 flex items-center justify-center gap-2 font-bold text-xs transition-all" onclick="clearTicket()" type="button">
+<span class="material-symbols-outlined text-lg">delete_sweep</span>
+<span>Cancelar</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- MICRO-MODAL: Numeric Keypad / PLU / Balanza Touchpad -->
+<div class="fixed inset-0 bg-charcoal-dark/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="numericPadModal">
+<div class="bg-surface-pure rounded-3xl shadow-float border border-border-subtle w-full max-w-sm p-6 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-xl bg-sage-light text-sage-dark flex items-center justify-center">
+<span class="material-symbols-outlined text-xl">scale</span>
+</div>
+<h3 class="font-display font-bold text-lg text-charcoal-dark">Ingreso Directo / Balanza</h3>
+</div>
+<button class="w-9 h-9 rounded-xl text-charcoal-muted hover:bg-warm-oat flex items-center justify-center" onclick="closeQuickNumberPadModal()" type="button">
+<span class="material-symbols-outlined text-2xl">close</span>
+</button>
+</div>
+<div class="bg-warm-linen border border-border-subtle p-4 rounded-2xl flex items-center justify-between">
+<span class="text-xs font-semibold text-charcoal-muted">Importe:</span>
+<span class="font-display text-2xl font-bold text-sage-dark" id="numericPadDisplay">$ 0</span>
+</div>
+<!-- Large touch numeric keypad for 24" POS -->
+<div class="grid grid-cols-3 gap-2">
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('1')">1</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('2')">2</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('3')">3</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('4')">4</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('5')">5</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('6')">6</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('7')">7</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('8')">8</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('9')">9</button>
+<button class="h-14 rounded-xl bg-[#FDEAE8] text-[#C03728] font-bold text-sm hover:opacity-90 active:scale-95" onclick="keypadPress('C')">BORRAR</button>
+<button class="h-14 rounded-xl bg-warm-oat font-display font-bold text-xl text-charcoal-dark hover:bg-warm-sand active:scale-95" onclick="keypadPress('0')">0</button>
+<button class="h-14 rounded-xl bg-sage-primary text-white font-bold text-sm hover:bg-sage-dark active:scale-95" onclick="keypadConfirm()">CARGAR</button>
+</div>
+</div>
+</div>
+<!-- NOTIFICATION BANNER / AUDITORY TOUCH FEEDBACK -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-charcoal-dark text-white px-5 py-3 rounded-2xl shadow-float flex items-center gap-3 text-sm font-semibold transition-all duration-300 opacity-0 pointer-events-none translate-y-4 z-50 border border-charcoal-muted/30" id="toastNotification">
+<span class="material-symbols-outlined text-amber-warm text-xl" id="toastIcon">check_circle</span>
+<span id="toastMessage">Operación realizada</span>
+</div>
+<script>
+    let ticketItems = [
+      { id: 'item-1', name: 'Combo Café + 2 Medialunas', price: 4900, qty: 1 },
+      { id: 'item-2', name: 'Hogaza Masa Madre', price: 4800, qty: 1 },
+      { id: 'item-3', name: 'Pan Francés Crujiente', price: 1200, qty: 2 },
+      { id: 'item-4', name: 'Medialuna Manteca', price: 1200, qty: 2 }
+    ];
+
+    let orderType = 'takeaway';
+    let keypadVal = '';
+
+    function formatPrice(val) {
+      return '$ ' + val.toLocaleString('es-AR');
+    }
+
+    function recalculateTotals() {
+      const totalItems = ticketItems.reduce((acc, it) => acc + it.qty, 0);
+      const grandTotal = ticketItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+
+      const countEl = document.getElementById('totalItemsCount');
+      const subtotalEl = document.getElementById('subtotalDisplay');
+      const grandTotalEl = document.getElementById('grandTotalDisplay');
+
+      if (countEl) countEl.textContent = totalItems;
+      if (subtotalEl) subtotalEl.textContent = formatPrice(grandTotal);
+      if (grandTotalEl) grandTotalEl.textContent = formatPrice(grandTotal);
+    }
+
+    function renderTicket() {
+      const container = document.getElementById('ticketItemsList');
+      if (!container) return;
+
+      if (ticketItems.length === 0) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-16 text-charcoal-muted gap-2">
+            <span class="material-symbols-outlined text-5xl text-warm-sand">shopping_basket</span>
+            <p class="font-bold text-sm text-charcoal-dark">Ticket en blanco</p>
+            <span class="text-xs text-charcoal-muted">Toque un producto artesanal para añadir</span>
+          </div>
+        `;
+        recalculateTotals();
+        return;
+      }
+
+      container.innerHTML = ticketItems.map(item => `
+        <div class="ticket-item py-2.5 flex items-center justify-between gap-2" data-item-id="${item.id}" data-unit-price="${item.price}">
+          <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-bold text-charcoal-dark truncate">${item.name}</h4>
+            <p class="text-xs text-charcoal-muted">${formatPrice(item.price)} c/u</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center bg-warm-oat rounded-xl p-0.5 border border-border-subtle">
+              <button onclick="updateQty('${item.id}', -1)" class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-[#FDEAE8] hover:text-[#C03728] text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all">-</button>
+              <span class="w-8 text-center font-display font-bold text-sm text-charcoal-dark item-qty">${item.qty}</span>
+              <button onclick="updateQty('${item.id}', 1)" class="w-9 h-9 rounded-lg bg-surface-pure hover:bg-sage-light hover:text-sage-dark text-charcoal-dark flex items-center justify-center font-bold text-lg active:scale-90 transition-all">+</button>
+            </div>
+            <span class="w-20 text-right font-display font-bold text-sm text-charcoal-dark item-total">${formatPrice(item.price * item.qty)}</span>
+            <button onclick="removeItem('${item.id}')" class="w-8 h-8 rounded-lg text-charcoal-muted hover:text-[#C03728] hover:bg-[#FDEAE8] flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      recalculateTotals();
+    }
+
+    function addToTicket(name, price, qty = 1) {
+      const existing = ticketItems.find(it => it.name === name);
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        const newId = 'item-' + Date.now();
+        ticketItems.push({ id: newId, name, price, qty });
+      }
+      renderTicket();
+      showToast(`Añadido: ${name}`, 'bakery_dining');
+    }
+
+    function updateQty(id, delta) {
+      const item = ticketItems.find(it => it.id === id);
+      if (!item) return;
+
+      item.qty += delta;
+      if (item.qty <= 0) {
+        removeItem(id);
+      } else {
+        renderTicket();
+      }
+    }
+
+    function removeItem(id) {
+      ticketItems = ticketItems.filter(it => it.id !== id);
+      renderTicket();
+      showToast('Ítem eliminado del ticket', 'delete');
+    }
+
+    function clearTicket() {
+      if (ticketItems.length === 0) return;
+      ticketItems = [];
+      renderTicket();
+      showToast('Ticket cancelado y liberado', 'delete_sweep');
+    }
+
+    function holdOrder() {
+      if (ticketItems.length === 0) {
+        showToast('No hay productos para pausar', 'warning');
+        return;
+      }
+      showToast('Ticket #0184 guardado en pausa', 'pause_circle');
+      ticketItems = [];
+      const tDisplay = document.getElementById('ticketNumberDisplay');
+      if (tDisplay) tDisplay.textContent = 'Ticket #0185';
+      renderTicket();
+    }
+
+    function proceedToPayment() {
+      if (ticketItems.length === 0) {
+        showToast('Seleccione productos para liquidar', 'error');
+        return;
+      }
+      showToast('Abriendo pasarela de pago (F12)...', 'payments');
+    }
+
+    function filterCategory(cat, btn) {
+      const buttons = document.querySelectorAll('#categoriesRibbon .cat-pill');
+      buttons.forEach(b => {
+        b.classList.remove('bg-sage-primary', 'text-white', 'shadow-soft');
+        b.classList.add('bg-surface-pure', 'text-charcoal-dark', 'border', 'border-border-subtle');
+      });
+
+      btn.classList.remove('bg-surface-pure', 'text-charcoal-dark', 'border', 'border-border-subtle');
+      btn.classList.add('bg-sage-primary', 'text-white', 'shadow-soft');
+
+      const cards = document.querySelectorAll('#productGrid .product-card');
+      cards.forEach(card => {
+        const cardCat = card.getAttribute('data-category');
+        if (cat === 'todos' || cardCat === cat) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    function filterQuickBadge(type) {
+      showToast('Mostrando recién salidos del horno', 'local_fire_department');
+      const panBtn = document.querySelectorAll('#categoriesRibbon .cat-pill')[1];
+      if (panBtn) filterCategory('panaderia', panBtn);
+    }
+
+    function toggleOrderType() {
+      const btn = document.getElementById('orderTypeBtn');
+      const label = document.getElementById('orderTypeLabel');
+      if (orderType === 'takeaway') {
+        orderType = 'table';
+        label.textContent = 'Mesa 03 (Salón)';
+        btn.querySelector('.material-symbols-outlined').textContent = 'table_restaurant';
+        showToast('Cambiado a Servicio Salón / Mesa 03', 'table_restaurant');
+      } else {
+        orderType = 'takeaway';
+        label.textContent = 'Para Llevar';
+        btn.querySelector('.material-symbols-outlined').textContent = 'takeout_dining';
+        showToast('Cambiado a Despacho Para Llevar', 'takeout_dining');
+      }
+    }
+
+    function triggerBarcodeBeep() {
+      showToast('Código detectado: Baguette Tradición', 'barcode_scanner');
+      addToTicket('Baguette Tradición', 1800, 1);
+    }
+
+    function showToast(msg, icon = 'check_circle') {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+      if (!toast) return;
+
+      toastMsg.textContent = msg;
+      toastIcon.textContent = icon;
+      toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2300);
+    }
+
+    // Modal Keypad
+    function openQuickNumberPadModal() {
+      keypadVal = '';
+      updateKeypadDisplay();
+      document.getElementById('numericPadModal').classList.remove('hidden');
+    }
+
+    function closeQuickNumberPadModal() {
+      document.getElementById('numericPadModal').classList.add('hidden');
+    }
+
+    function keypadPress(digit) {
+      if (digit === 'C') {
+        keypadVal = '';
+      } else {
+        if (keypadVal.length < 7) keypadVal += digit;
+      }
+      updateKeypadDisplay();
+    }
+
+    function updateKeypadDisplay() {
+      const display = document.getElementById('numericPadDisplay');
+      const val = parseInt(keypadVal || '0', 10);
+      display.textContent = formatPrice(val);
+    }
+
+    function keypadConfirm() {
+      const val = parseInt(keypadVal || '0', 10);
+      if (val > 0) {
+        addToTicket('Pan Especial Balanza / PLU', val, 1);
+        closeQuickNumberPadModal();
+      } else {
+        showToast('Ingrese un monto válido', 'error');
+      }
+    }
+
+    // Global keyboard triggers
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F12') {
+        e.preventDefault();
+        proceedToPayment();
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        document.getElementById('productSearchInput')?.focus();
+      }
+    });
+
+    // Real-time catalog search
+    document.getElementById('productSearchInput')?.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      const cards = document.querySelectorAll('#productGrid .product-card');
+      cards.forEach(card => {
+        const name = (card.getAttribute('data-name') || '').toLowerCase();
+        if (!query || name.includes(query)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+
+    recalculateTotals();
+  </script>
+</body></html>

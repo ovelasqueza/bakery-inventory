@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { BotonCajon, Card } from '@/components/ui';
+import { Card } from '@/components/ui';
 
 export default function HomePage() {
   const currentYear = new Date().getFullYear();
@@ -23,10 +23,6 @@ export default function HomePage() {
                 priority
               />
             </div>
-          </div>
-          {/* Abrir el cajón monedero: solo en computador (el cajón va conectado al equipo de la caja) */}
-          <div className="absolute right-4 top-3 hidden sm:block">
-            <BotonCajon />
           </div>
         </div>
       </header>

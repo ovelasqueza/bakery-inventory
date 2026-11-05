@@ -1,0 +1,203 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Migración `supabase/migration-recibo-cierre.sql`": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030247
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252346
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889536522
+      }
+    ],
+    "1.2 API del cliente": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030282
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252399
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889537975
+      }
+    ],
+    "2.1 Configuración y formato de texto": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030310
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889252955
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889538732
+      }
+    ],
+    "2.3 Codificación y comandos ESC/POS": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030344
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889546938
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889668212
+      }
+    ],
+    "2.6 Armado del Recibo_Cierre": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030368
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889680388
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889873697
+      }
+    ],
+    "3.1 Cliente y orquestación": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030393
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889880853
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890025073
+      }
+    ],
+    "3.4 Ruta `POST /imprimir` del agente": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030419
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889253875
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889539936
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030450
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890027257
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890192637
+      }
+    ],
+    "5.1 Impresión al cerrar y reimpresión": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030479
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890026035
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890191746
+      }
+    ],
+    "6. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889030518
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890202417
+      },
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890315623
+      }
+    ],
+    "1. Datos del recibo": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889538006
+      }
+    ],
+    "2. Dominio puro del recibo (`src/lib/recibo/`)": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793889873719
+      }
+    ],
+    "3. Envío al agente": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890025104
+      }
+    ],
+    "5. UI": [
+      {
+        "executionId": "9d0f580a-82f1-4abe-b89f-7ce4f3148a50",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793890191762
+      }
+    ]
+  }
+}

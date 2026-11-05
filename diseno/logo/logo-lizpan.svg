@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 320 160" width="320" height="160" role="img" aria-labelledby="lizpan-title">
+  <title id="lizpan-title">Panadería LIZPAN</title>
+  <defs>
+    <g id="espiga">
+      <path d="M10 2 Q4 0.5 0 0 L-50 0" fill="none" stroke="#D9822B" stroke-width="2.2" stroke-linecap="round"/>
+      <ellipse cx="-12" cy="-3.6" rx="5.4" ry="2.3" transform="rotate(22 -12 -3.6)" fill="#E8973D"/>
+      <ellipse cx="-12" cy="3.6" rx="5.4" ry="2.3" transform="rotate(-22 -12 3.6)" fill="#E8973D"/>
+      <ellipse cx="-21" cy="-3.6" rx="5.4" ry="2.3" transform="rotate(22 -21 -3.6)" fill="#E8973D"/>
+      <ellipse cx="-21" cy="3.6" rx="5.4" ry="2.3" transform="rotate(-22 -21 3.6)" fill="#E8973D"/>
+      <ellipse cx="-30" cy="-3.4" rx="5.2" ry="2.2" transform="rotate(22 -30 -3.4)" fill="#E8973D"/>
+      <ellipse cx="-30" cy="3.4" rx="5.2" ry="2.2" transform="rotate(-22 -30 3.4)" fill="#E8973D"/>
+      <ellipse cx="-38.5" cy="-3" rx="4.8" ry="2" transform="rotate(22 -38.5 -3)" fill="#E8973D"/>
+      <ellipse cx="-38.5" cy="3" rx="4.8" ry="2" transform="rotate(-22 -38.5 3)" fill="#E8973D"/>
+      <ellipse cx="-47" cy="0" rx="5" ry="2" fill="#E8973D"/>
+    </g>
+  </defs>
+
+  <!-- Óvalos -->
+  <ellipse cx="160" cy="84" rx="154" ry="72" fill="#2D5A43" stroke="#D9822B" stroke-width="6"/>
+  <ellipse cx="160" cy="84" rx="142" ry="61" fill="#F7F5F0" stroke="#E8973D" stroke-width="1.5"/>
+
+  <!-- Gorro de panadero -->
+  <g stroke="#244936" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M143 38 C131 37 129 20 142 19 C144 7 158 4 162 12 C168 4 184 8 181 20 C193 21 191 37 177 38 Z" fill="#FFFFFF"/>
+    <rect x="142" y="36" width="36" height="12" rx="2.5" fill="#FFFFFF"/>
+    <path d="M151 39 V45 M160 39 V45 M169 39 V45" fill="none" stroke-width="1.6"/>
+  </g>
+
+  <!-- Hogaza -->
+  <ellipse cx="160" cy="64" rx="30" ry="10" fill="#D9822B"/>
+  <ellipse cx="156" cy="61" rx="22" ry="4.5" fill="#E8973D"/>
+  <path d="M141 66 Q145 59 150 57 M155 67 Q159 59 164 57 M169 67 Q173 60 178 58" fill="none" stroke="#FAF1E6" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Texto -->
+  <text x="160" y="110" text-anchor="middle" textLength="216" lengthAdjust="spacingAndGlyphs" font-family="'Arial Black','Segoe UI Black','Helvetica Neue',Arial,sans-serif" font-size="46" font-weight="900" fill="#2D5A43" stroke="#244936" stroke-width="1.5" stroke-linejoin="round">LIZPAN</text>
+
+  <!-- Espigas -->
+  <use xlink:href="#espiga" href="#espiga" transform="translate(152 135) rotate(12)"/>
+  <g transform="translate(320 0) scale(-1 1)">
+    <use xlink:href="#espiga" href="#espiga" transform="translate(152 135) rotate(12)"/>
+  </g>
+</svg>

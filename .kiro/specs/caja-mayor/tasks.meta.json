@@ -1,0 +1,363 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Tablas, columnas, seguridad e inmutabilidad": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075400
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847085296
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847247294
+      }
+    ],
+    "1.2 Funciones auxiliares, fórmula y apertura/cierre": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075423
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847254530
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847525900
+      }
+    ],
+    "1.3 Gastos con origen, retiros y RPC de Caja mayor": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075446
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847526252
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913107
+      }
+    ],
+    "2.1 Códigos de error": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075473
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847085377
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847248307
+      }
+    ],
+    "2.3 Turnos y gastos": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075497
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847255769
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847525995
+      }
+    ],
+    "2.4 API de Caja mayor y reportes": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075524
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847526461
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913127
+      }
+    ],
+    "3.1 Actualizar `src/lib/caja/turno.ts`": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075544
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847256699
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847526228
+      }
+    ],
+    "3.5 Crear `src/lib/caja/cajaMayor.ts`": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075559
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847526475
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913647
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075582
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848461245
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848696013
+      }
+    ],
+    "5.1 Cierre a ciegas y resultado": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075608
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847923674
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848164835
+      }
+    ],
+    "5.2 Apertura sin base": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075632
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847924048
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848164861
+      }
+    ],
+    "5.4 Selector de origen y panel de gastos": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075657
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847926940
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848164935
+      }
+    ],
+    "5.5 Retiro a caja mayor": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075679
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847924776
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848165468
+      }
+    ],
+    "5.6 Conectar en encabezado y punto de venta": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075702
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848272342
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848459779
+      }
+    ],
+    "6.1 Turnos y Gastos con columnas nuevas": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075721
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847926054
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848166433
+      }
+    ],
+    "6.3 Diálogos de ajuste y gasto sin turno": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075745
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848272369
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848460427
+      }
+    ],
+    "6.4 Sección Caja mayor": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075771
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848462020
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848697200
+      }
+    ],
+    "6.6 Pestaña en el módulo": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075799
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848698039
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848772999
+      }
+    ],
+    "7. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847075821
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848776203
+      },
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848826137
+      }
+    ],
+    "1. Migración SQL `supabase/migration-caja-mayor.sql`": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913148
+      }
+    ],
+    "2. Tipos y API del cliente": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913171
+      }
+    ],
+    "3. Dominio puro": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793847913669
+      }
+    ],
+    "5. UI de Caja": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848459790
+      }
+    ],
+    "6. Reportes": [
+      {
+        "executionId": "b8690381-ff3e-4d34-b75e-74e310cca744",
+        "chatSessionId": "sess_e1fc46fe-ce52-4485-81a9-34c069dd128a",
+        "timestamp": 1793848773023
+      }
+    ]
+  }
+}

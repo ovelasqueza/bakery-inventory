@@ -86,6 +86,7 @@ export function ProductosList() {
   const handleFormSubmit = async (data: {
     nombre: string;
     precio_actual: number;
+    precio_venta?: number | null;
     tipo_producto: 'normal' | 'produccion' | 'materia_prima';
     contenido_por_unidad?: number | null;
     unidad_medida?: string | null;
@@ -112,6 +113,20 @@ export function ProductosList() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  // La foto se guarda al momento (independiente de "Actualizar"), desde la tarjeta o el formulario:
+  // refleja el nuevo imagen_path en la lista y en el producto seleccionado.
+  const actualizarFoto = (id: string, nuevoPath: string | null) => {
+    const actualizar = (p: Producto) => (p.id === id ? { ...p, imagen_path: nuevoPath } : p);
+    setProductos((prev) => prev.map(actualizar));
+    setFilteredProductos((prev) => prev.map(actualizar));
+    setSelectedProducto((prev) => (prev && prev.id === id ? { ...prev, imagen_path: nuevoPath } : prev));
+  };
+
+  const handleFotoCambio = (nuevoPath: string | null) => {
+    if (!selectedProducto) return;
+    actualizarFoto(selectedProducto.id, nuevoPath);
   };
 
   const handleConfirmDelete = async () => {
@@ -202,7 +217,7 @@ export function ProductosList() {
                 </h3>
                 <div className="h-px flex-1 bg-gray-200" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredProductos
                   .filter(p => p.tipo_producto === 'normal' || !p.tipo_producto)
                   .map((producto) => (
@@ -212,6 +227,7 @@ export function ProductosList() {
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
                       onViewHistory={handleViewHistory}
+                      onFotoCambio={actualizarFoto}
                     />
                   ))}
               </div>
@@ -228,7 +244,7 @@ export function ProductosList() {
                 </h3>
                 <div className="h-px flex-1 bg-orange-200" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {filteredProductos
                   .filter(p => p.tipo_producto === 'produccion')
                   .map((producto) => (
@@ -238,6 +254,7 @@ export function ProductosList() {
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
                       onViewHistory={handleViewHistory}
+                      onFotoCambio={actualizarFoto}
                     />
                   ))}
               </div>
@@ -264,6 +281,7 @@ export function ProductosList() {
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
                       onViewHistory={handleViewHistory}
+                      onFotoCambio={actualizarFoto}
                     />
                   ))}
               </div>
@@ -283,6 +301,7 @@ export function ProductosList() {
           onSubmit={handleFormSubmit}
           onCancel={() => setIsFormOpen(false)}
           isLoading={formLoading}
+          onFotoCambio={handleFotoCambio}
         />
       </Modal>
 

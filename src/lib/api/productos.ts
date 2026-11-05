@@ -69,6 +69,8 @@ export async function createProducto(producto: ProductoInsert): Promise<Producto
       tipo_producto: producto.tipo_producto || 'normal',
       contenido_por_unidad: producto.contenido_por_unidad || null,
       unidad_medida: producto.unidad_medida || null,
+      // Solo si viene: así crear sigue funcionando aunque falte la columna (migración sin aplicar)
+      ...(producto.precio_venta !== undefined ? { precio_venta: producto.precio_venta } : {}),
     }])
     .select()
     .single();

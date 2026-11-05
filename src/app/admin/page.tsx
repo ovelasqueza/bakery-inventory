@@ -120,18 +120,34 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="p-2 -ml-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Administración</h1>
-              <p className="text-sm text-gray-500">Configuración del sistema</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="p-2 -ml-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Administración</h1>
+                <p className="text-sm text-gray-500">Configuración del sistema</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/caja"
+                className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 bg-bakery-600 text-white hover:bg-bakery-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bakery-500 active:scale-95"
+              >
+                Ir a Caja
+              </Link>
+              <Link
+                href="/admin/reportes"
+                className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 border-2 border-bakery-600 text-bakery-600 hover:bg-bakery-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bakery-500 active:scale-95"
+              >
+                Reportes
+              </Link>
             </div>
           </div>
         </div>
