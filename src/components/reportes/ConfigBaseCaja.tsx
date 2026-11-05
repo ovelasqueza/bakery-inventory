@@ -6,14 +6,14 @@ import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { useToast } from '@/components/ui';
 import { guardarConfig, obtenerParametrosCaja } from '@/lib/api/parametros';
 import { ErrorApp } from '@/lib/api/errores';
-import { validarEnteroEnRango } from '@/lib/caja/validacion';
+import { conMiles, textoMiles, validarEnteroEnRango } from '@/lib/caja/validacion';
 import { formatCurrency } from '@/lib/utils';
 
 const BASE_MAXIMA = 10_000_000;
 
 const MENSAJES_VALIDACION = {
   VACIO: 'Escriba la base de caja.',
-  NO_ENTERO: 'La base debe ser un número entero, sin puntos ni comas.',
+  NO_ENTERO: 'La base debe ser un número entero, sin comas ni decimales.',
   RANGO: `La base debe estar entre 0 y ${formatCurrency(BASE_MAXIMA)}.`,
 } as const;
 
@@ -49,7 +49,7 @@ export function ConfigBaseCaja({ valorInicial, onGuardado }: ConfigBaseCajaProps
     try {
       const p = await obtenerParametrosCaja();
       setGuardado(p.baseCajaDefecto);
-      setTexto(String(p.baseCajaDefecto));
+      setTexto(textoMiles(p.baseCajaDefecto));
     } catch {
       setErrorCarga(true);
     } finally {
@@ -64,7 +64,7 @@ export function ConfigBaseCaja({ valorInicial, onGuardado }: ConfigBaseCajaProps
   useEffect(() => {
     if (valorInicial === undefined) return;
     setGuardado(valorInicial);
-    setTexto(String(valorInicial));
+    setTexto(textoMiles(valorInicial));
     setError(null);
   }, [valorInicial]);
 
@@ -82,7 +82,7 @@ export function ConfigBaseCaja({ valorInicial, onGuardado }: ConfigBaseCajaProps
     try {
       await guardarConfig('base_caja_defecto', String(res.valor));
       setGuardado(res.valor);
-      setTexto(String(res.valor));
+      setTexto(textoMiles(res.valor));
       showToast('Base de caja guardada', 'success');
       onGuardado?.(res.valor);
     } catch (err) {
@@ -138,7 +138,7 @@ export function ConfigBaseCaja({ valorInicial, onGuardado }: ConfigBaseCajaProps
               autoComplete="off"
               value={texto}
               onChange={(e) => {
-                setTexto(e.target.value);
+                setTexto(conMiles(e.target.value));
                 if (error) setError(null);
               }}
               disabled={guardando}

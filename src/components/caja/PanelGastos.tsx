@@ -22,7 +22,7 @@ import type { CategoriaGastoParam, PersonaCajaParam } from '@/lib/api/parametros
 import { resumenTurno } from '@/lib/api/turnos';
 import { textoOrigen, validarOrigenes, type ErrorOrigen } from '@/lib/caja/cajaMayor';
 import { parteCajon, requiereAdvertencia } from '@/lib/caja/turno';
-import { validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
+import { conMiles, validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
 import { hora12 } from '@/lib/fechas/bogota';
 import { formatCurrency } from '@/lib/utils';
 
@@ -71,7 +71,7 @@ function codigoDe(e: unknown): string {
 
 function mensajeValor(error: 'VACIO' | 'NO_ENTERO' | 'RANGO'): string {
   if (error === 'VACIO') return 'Escriba el valor del gasto.';
-  if (error === 'NO_ENTERO') return 'Escriba solo números enteros, sin puntos ni comas.';
+  if (error === 'NO_ENTERO') return 'Escriba solo números enteros, sin comas ni decimales.';
   return `El valor debe estar entre ${formatCurrency(VALOR_MIN)} y ${formatCurrency(VALOR_MAX)}.`;
 }
 
@@ -368,8 +368,7 @@ export function PanelGastos({
               inputMode="numeric"
               autoComplete="off"
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              placeholder="0"
+              onChange={(e) => setValor(conMiles(e.target.value))}
               aria-invalid={errores.valor ? true : undefined}
               aria-describedby={errores.valor ? `${idValor}-error` : undefined}
               className={`min-h-[52px] w-full rounded-2xl border-2 bg-lz-surface px-4 text-xl font-semibold tabular-nums text-lz-charcoal placeholder:text-lz-charcoal-muted focus:outline-none ${

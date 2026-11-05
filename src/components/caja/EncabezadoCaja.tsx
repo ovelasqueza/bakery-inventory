@@ -70,7 +70,7 @@ export function EncabezadoCaja({ layout, acciones }: EncabezadoCajaProps = {}) {
     <header
       className="flex shrink-0 items-center justify-between overflow-hidden border-b border-lz-border bg-lz-linen"
       style={{
-        height: MEDIDAS.encabezado,
+        height: conAcciones && layout ? layout.altoEncabezado : MEDIDAS.encabezado,
         paddingLeft: margen,
         paddingRight: margen,
         columnGap: conAcciones && parte !== 'acciones' ? ENCABEZADO.gapIzquierda : 0,

@@ -13,7 +13,7 @@ import { ErrorApp } from '@/lib/api/errores';
 import type { PersonaCajaParam } from '@/lib/api/parametros';
 import { resumenTurno } from '@/lib/api/turnos';
 import { requiereAdvertencia } from '@/lib/caja/turno';
-import { validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
+import { conMiles, validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
 import { formatCurrency } from '@/lib/utils';
 
 const VALOR_MIN = 1;
@@ -56,7 +56,7 @@ function codigoDe(e: unknown): string {
 
 function mensajeValor(error: 'VACIO' | 'NO_ENTERO' | 'RANGO'): string {
   if (error === 'VACIO') return 'Escriba el valor del retiro.';
-  if (error === 'NO_ENTERO') return 'Escriba solo números enteros, sin puntos ni comas.';
+  if (error === 'NO_ENTERO') return 'Escriba solo números enteros, sin comas ni decimales.';
   return `El valor debe estar entre ${formatCurrency(VALOR_MIN)} y ${formatCurrency(VALOR_MAX)}.`;
 }
 
@@ -204,8 +204,7 @@ export function DialogoRetiro({ turnoId, personas, onRegistrado, onTurnoCerrado,
               autoComplete="off"
               autoFocus
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              placeholder="0"
+              onChange={(e) => setValor(conMiles(e.target.value))}
               aria-invalid={errores.valor ? true : undefined}
               aria-describedby={errores.valor ? `${idValor}-error` : undefined}
               className={`min-h-[60px] w-full rounded-2xl border-2 bg-lz-surface px-4 font-lz-display text-3xl font-bold tabular-nums text-lz-charcoal placeholder:text-lz-charcoal-muted focus:outline-none ${

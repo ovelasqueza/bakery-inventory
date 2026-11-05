@@ -11,7 +11,7 @@ import { ErrorApp } from '@/lib/api/errores';
 import type { PersonaCajaParam } from '@/lib/api/parametros';
 import { cerrarTurno, type Cierre } from '@/lib/api/turnos';
 import { calcularCierre } from '@/lib/caja/turno';
-import { validarEnteroEnRango, validarNombrePersona } from '@/lib/caja/validacion';
+import { conMiles, textoMiles, validarEnteroEnRango, validarNombrePersona } from '@/lib/caja/validacion';
 import { hora12 } from '@/lib/fechas/bogota';
 import { formatCurrency } from '@/lib/utils';
 
@@ -38,19 +38,19 @@ const MENSAJES_NOMBRE = {
 
 const MENSAJES_CONTADO = {
   VACIO: 'Escriba el efectivo contado (puede ser 0).',
-  NO_ENTERO: 'Escriba solo números enteros, sin puntos ni comas.',
+  NO_ENTERO: 'Escriba solo números enteros, sin comas ni decimales.',
   RANGO: `El efectivo debe estar entre ${formatCurrency(0)} y ${formatCurrency(CONTADO_MAX)}.`,
 } as const;
 
 const MENSAJES_BASE = {
   VACIO: 'Escriba la base que se deja (puede ser 0).',
-  NO_ENTERO: 'Escriba solo números enteros, sin puntos ni comas.',
+  NO_ENTERO: 'Escriba solo números enteros, sin comas ni decimales.',
   RANGO: `La base debe estar entre ${formatCurrency(0)} y ${formatCurrency(CONTADO_MAX)}.`,
   BASE_MAYOR_CONTADO: 'La base no puede ser mayor que el efectivo contado.',
 } as const;
 
 function textoInicialBase(baseDefecto: number): string {
-  return Number.isInteger(baseDefecto) && baseDefecto >= 0 ? String(baseDefecto) : '0';
+  return Number.isInteger(baseDefecto) && baseDefecto >= 0 ? textoMiles(baseDefecto) : '0';
 }
 
 export function CierreTurno({
@@ -198,9 +198,8 @@ export function CierreTurno({
                 inputMode="numeric"
                 autoComplete="off"
                 value={contado}
-                placeholder="0"
                 disabled={enviando}
-                onChange={(e) => cambiarContado(e.target.value)}
+                onChange={(e) => cambiarContado(conMiles(e.target.value))}
                 aria-invalid={errorContado ? true : undefined}
                 aria-describedby={errorContado ? idErrorContado : undefined}
                 className={claseCampo(errorContado)}
@@ -230,9 +229,8 @@ export function CierreTurno({
                 inputMode="numeric"
                 autoComplete="off"
                 value={base}
-                placeholder="0"
                 disabled={enviando}
-                onChange={(e) => cambiarBase(e.target.value)}
+                onChange={(e) => cambiarBase(conMiles(e.target.value))}
                 aria-invalid={errorBase ? true : undefined}
                 aria-describedby={errorBase ? idErrorBase : undefined}
                 className={claseCampo(errorBase)}

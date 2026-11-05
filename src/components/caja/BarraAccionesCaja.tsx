@@ -1,6 +1,6 @@
 'use client';
 
-// Grupo_Acciones: 6 botones iguales dentro del Encabezado_Caja, separados 8 px (Req 1.1, 1.3, 1.6, 1.8, 1.9, 1.10, 3.1, 3.2).
+// Grupo_Acciones: 6 botones iguales dentro del Encabezado_Caja, separados 8 px, siempre con ícono y nombre (Req 1.1, 1.3, 1.6, 1.8, 3.1, 3.2).
 
 import type { ReactNode } from 'react';
 import { ENCABEZADO, type LayoutCaja } from '@/lib/caja/layout';
@@ -87,26 +87,42 @@ const TONOS: Record<Tono, string> = {
   peligro: 'border-lz-border bg-lz-surface text-lz-charcoal hover:border-lz-danger-border hover:bg-lz-danger-surface hover:text-lz-danger',
 };
 
-const ACCIONES: ReadonlyArray<{ accion: AccionCaja; texto: string; icono: ReactNode }> = [
-  { accion: 'ventas', texto: 'Ventas', icono: ICONO_VENTAS },
-  { accion: 'gastos', texto: 'Gastos/Pedidos', icono: ICONO_GASTOS },
-  { accion: 'retiro', texto: 'Retiros', icono: ICONO_RETIRO },
-  { accion: 'autoconsumo', texto: 'Autoconsumo', icono: ICONO_AUTOCONSUMO },
-  { accion: 'calculadora', texto: 'Calculadora', icono: ICONO_CALCULADORA },
-  { accion: 'cerrar', texto: 'Cerrar turno', icono: ICONO_CERRAR },
+const ACCIONES: ReadonlyArray<{ accion: AccionCaja; texto: string; etiqueta: ReactNode; icono: ReactNode }> = [
+  { accion: 'ventas', texto: 'Ventas', etiqueta: 'Ventas', icono: ICONO_VENTAS },
+  // <wbr>: si no cabe, parte después de la barra ("Gastos/" · "Pedidos").
+  { accion: 'gastos', texto: 'Gastos/Pedidos', etiqueta: <>Gastos/<wbr />Pedidos</>, icono: ICONO_GASTOS },
+  { accion: 'retiro', texto: 'Retiros', etiqueta: 'Retiros', icono: ICONO_RETIRO },
+  { accion: 'autoconsumo', texto: 'Autoconsumo', etiqueta: 'Autoconsumo', icono: ICONO_AUTOCONSUMO },
+  { accion: 'calculadora', texto: 'Calculadora', etiqueta: 'Calculadora', icono: ICONO_CALCULADORA },
+  { accion: 'cerrar', texto: 'Cerrar turno', etiqueta: 'Cerrar turno', icono: ICONO_CERRAR },
 ];
 
 export function BarraAccionesCaja({ layout, activo, onAccion }: BarraAccionesCajaProps) {
   const ancho = layout.anchoBotonAccion;
   const gap = ENCABEZADO.gap;
+  const porFila = layout.filasAcciones === 2 ? ENCABEZADO.botones / 2 : ENCABEZADO.botones;
+  const enLinea = layout.etiquetaAcciones === 'en-linea';
+  const compacto = layout.filasAcciones === 2;
+
+  // El nombre siempre se ve: al lado del ícono si hay ancho, o debajo si no.
+  const forma = enLinea
+    ? 'flex-row gap-2 px-2'
+    : `flex-col px-1 ${compacto ? 'gap-0.5 [&>svg]:h-5 [&>svg]:w-5' : 'gap-1'}`;
+  const letra = enLinea
+    ? 'text-left text-sm'
+    : `text-center ${compacto ? 'text-[11px]' : 'text-xs'}`;
 
   return (
     <nav
       aria-label="Acciones de caja"
-      className="grid shrink-0 grid-cols-6 items-center"
-      style={{ columnGap: gap, width: ENCABEZADO.botones * ancho + (ENCABEZADO.botones - 1) * gap }}
+      className={`grid shrink-0 items-center ${porFila === 3 ? 'grid-cols-3' : 'grid-cols-6'}`}
+      style={{
+        columnGap: gap,
+        rowGap: ENCABEZADO.gapFilas,
+        width: porFila * ancho + (porFila - 1) * gap,
+      }}
     >
-      {ACCIONES.map(({ accion, texto, icono }) => {
+      {ACCIONES.map(({ accion, texto, etiqueta, icono }) => {
         const esActivo = activo === accion;
         const tono: Tono = esActivo ? 'activo' : accion === 'cerrar' ? 'peligro' : 'normal';
         return (
@@ -114,16 +130,13 @@ export function BarraAccionesCaja({ layout, activo, onAccion }: BarraAccionesCaj
             key={accion}
             type="button"
             onClick={() => onAccion(accion)}
-            aria-label={texto}
             title={texto}
             aria-pressed={esActivo ? true : undefined}
-            className={`inline-flex min-w-[44px] items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-1 font-semibold transition-colors ${TONOS[tono]}`}
-            style={{ width: ancho, height: ENCABEZADO.altoBoton, minHeight: ENCABEZADO.toqueMin }}
+            className={`inline-flex min-w-[44px] items-center justify-center overflow-hidden rounded-2xl border font-semibold transition-colors ${forma} ${TONOS[tono]}`}
+            style={{ width: ancho, height: layout.altoBotonAccion, minHeight: ENCABEZADO.toqueMin }}
           >
             {icono}
-            {layout.textoEnAcciones && (
-              <span className="line-clamp-2 min-w-0 text-left text-xs leading-tight lg:text-sm">{texto}</span>
-            )}
+            <span className={`line-clamp-2 min-w-0 leading-tight ${letra}`}>{etiqueta}</span>
           </button>
         );
       })}

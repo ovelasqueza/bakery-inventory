@@ -6,6 +6,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ParteCajaMayor } from '@/lib/api/cajaMayor';
 import type { OrigenGasto } from '@/lib/api/gastos';
+import { conMiles, textoMiles } from '@/lib/caja/validacion';
 import { formatCurrency } from '@/lib/utils';
 
 /** Clave interna del Cajón (en `OrigenGasto` es `parteId = null`). */
@@ -42,13 +43,13 @@ function claveDe(parteId: string | null): string {
 
 function textoInicial(value: OrigenGasto[]): Record<string, string> {
   const textos: Record<string, string> = {};
-  if (value.length > 1) for (const o of value) textos[claveDe(o.parteId)] = String(o.valor);
+  if (value.length > 1) for (const o of value) textos[claveDe(o.parteId)] = textoMiles(o.valor);
   return textos;
 }
 
 /** Texto de un campo del Combinado → valor; vacío = sin valor; texto no entero = NaN (lo rechaza `validarOrigenes`). */
 function leerValor(texto: string): number | null {
-  const t = texto.trim();
+  const t = texto.trim().replace(/\./g, '');
   if (t === '') return null;
   return /^\d+$/.test(t) ? Number(t) : Number.NaN;
 }
@@ -197,10 +198,9 @@ export function SelectorOrigenGasto({
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
-                  placeholder="0"
                   disabled={deshabilitado}
                   value={textos[f.clave] ?? ''}
-                  onChange={(e) => setTextos((t) => ({ ...t, [f.clave]: e.target.value }))}
+                  onChange={(e) => setTextos((t) => ({ ...t, [f.clave]: conMiles(e.target.value) }))}
                   className="min-h-[48px] w-36 rounded-2xl border-2 border-lz-border bg-lz-surface px-3 text-right text-lg font-semibold tabular-nums text-lz-charcoal placeholder:text-lz-charcoal-muted focus:border-lz-sage focus:outline-none"
                 />
               </div>

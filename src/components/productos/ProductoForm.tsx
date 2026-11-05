@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button, Input, Select, type SelectOption } from '@/components/ui';
 import type { Producto } from '@/types/database';
 import { getPorcentajeProduccion } from '@/lib/api/configuracion';
+import { conMiles, textoMiles } from '@/lib/caja/validacion';
 import { FotoProducto } from './FotoProducto';
 
 type TipoProducto = 'normal' | 'produccion' | 'materia_prima';
@@ -44,7 +45,7 @@ export function ProductoForm({
   const [nombre, setNombre] = useState(producto?.nombre || '');
   const [precio, setPrecio] = useState(producto?.precio_actual?.toString() || '');
   const [precioVenta, setPrecioVenta] = useState(
-    producto?.precio_venta !== null && producto?.precio_venta !== undefined ? String(producto.precio_venta) : ''
+    producto?.precio_venta !== null && producto?.precio_venta !== undefined ? textoMiles(producto.precio_venta) : ''
   );
   const [tipoProducto, setTipoProducto] = useState<TipoProducto>(
     (producto?.tipo_producto as TipoProducto) || 'normal'
@@ -101,8 +102,8 @@ export function ProductoForm({
     // Precio de venta al público: opcional, peso entero (la Caja no maneja centavos)
     if (tipoProducto !== 'materia_prima' && precioVenta.trim()) {
       const venta = precioVenta.trim();
-      if (!/^\d+$/.test(venta) || Number(venta) > 99_999_999) {
-        newErrors.precioVenta = 'Ingresa un valor entero en pesos, sin puntos ni decimales';
+      if (!/^\d+$/.test(venta.replace(/\./g, '')) || Number(venta.replace(/\./g, '')) > 99_999_999) {
+        newErrors.precioVenta = 'Ingresa un valor entero en pesos, sin comas ni decimales';
       }
     }
 
@@ -135,7 +136,7 @@ export function ProductoForm({
     if (tipoProducto === 'materia_prima') {
       precio_venta = columnaVentaExiste ? null : undefined;
     } else if (ventaTexto) {
-      precio_venta = Number(ventaTexto);
+      precio_venta = Number(ventaTexto.replace(/\./g, ''));
     } else {
       precio_venta = columnaVentaExiste ? null : undefined;
     }
@@ -200,11 +201,11 @@ export function ProductoForm({
             label="Precio de venta al público (Caja)"
             type="text"
             value={precioVenta}
-            onChange={(e) => setPrecioVenta(e.target.value.replace(/[^\d]/g, ''))}
+            onChange={(e) => setPrecioVenta(conMiles(e.target.value))}
             error={errors.precioVenta}
-            placeholder="Ej: 2500"
+            placeholder="Ej: 2.500"
             inputMode="numeric"
-            maxLength={8}
+            maxLength={10}
             disabled={isLoading}
           />
           {!errors.precioVenta && (

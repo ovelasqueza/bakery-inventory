@@ -22,18 +22,36 @@ export function validarNombrePersona(
 }
 
 const SOLO_DIGITOS = /^\d+$/;
+/** "1.500", "25.000", "1.250.000": puntos solo como separador de miles. */
+const CON_MILES = /^\d{1,3}(\.\d{3})+$/;
 
 /**
- * Entero escrito en un campo de texto. Acepta solo dígitos (sin signos, puntos ni
- * comas) después de quitar espacios. "-5" da NO_ENTERO.
+ * Lo que se escribe en un campo de pesos, con punto de miles: "25000" → "25.000".
+ * Quita todo lo que no sea dígito y los ceros a la izquierda. Vacío queda vacío.
+ */
+export function conMiles(texto: string): string {
+  const digitos = texto.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  return digitos.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/** Valor con punto de miles escrito como texto: 25000 → "25.000". */
+export function textoMiles(valor: number): string {
+  return conMiles(String(Math.trunc(valor)));
+}
+
+/**
+ * Entero escrito en un campo de texto. Acepta solo dígitos, con o sin punto de miles
+ * ("25000" o "25.000"; sin signos, comas ni decimales) después de quitar espacios.
+ * "-5" da NO_ENTERO.
  */
 export function validarEnteroEnRango(
   texto: string,
   min: number,
   max: number
 ): { ok: true; valor: number } | { ok: false; error: 'VACIO' | 'NO_ENTERO' | 'RANGO' } {
-  const t = texto.trim();
+  let t = texto.trim();
   if (t.length === 0) return { ok: false, error: 'VACIO' };
+  if (CON_MILES.test(t)) t = t.replace(/\./g, '');
   if (!SOLO_DIGITOS.test(t)) return { ok: false, error: 'NO_ENTERO' };
   const valor = Number(t);
   if (!Number.isSafeInteger(valor) || valor < min || valor > max) {

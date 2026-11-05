@@ -14,14 +14,23 @@ export const MEDIDAS = {
   quiebre: 768,
 };
 
-/** Grupo_Acciones dentro del Encabezado_Caja. */
+/**
+ * Grupo_Acciones dentro del Encabezado_Caja. Los botones siempre llevan ícono y nombre:
+ * si no hay espacio, primero se quita el logo, luego el reloj y al final se pasan a 2 filas de 3.
+ */
 export const ENCABEZADO = {
   botones: 6,
-  altoBoton: 48,
+  /** Alto de cada botón con una sola fila (encabezado de 96 px). */
+  altoBoton: 64,
+  /** Alto de cada botón con 2 filas. */
+  altoBotonDosFilas: 52,
   /** Área táctil mínima de cada botón. */
   toqueMin: 44,
   /** Separación entre botones vecinos (Req 1.3). */
   gap: 8,
+  /** Separación entre las 2 filas y margen vertical del encabezado con 2 filas. */
+  gapFilas: 6,
+  margenVerticalDosFilas: 8,
   /** Padding horizontal del encabezado. */
   margen: { movil: 8, escritorio: 16 },
   /** Ancho máximo de cada botón en pantallas grandes. */
@@ -29,10 +38,10 @@ export const ENCABEZADO = {
   /** Ancho reservado a la izquierda del grupo y separación con él. */
   izquierda: { acciones: 0, reloj: 96, completo: 360 },
   gapIzquierda: 8,
-  /** Umbrales de ancho de ventana. */
-  conReloj: 480,
-  conLogo: 768,
-  conTexto: 1280,
+  /** Ancho mínimo de botón para el ícono al lado del nombre (también para mostrar el logo). */
+  anchoEnLinea: 136,
+  /** Ancho mínimo de botón para el ícono encima del nombre. */
+  anchoApilado: 84,
 };
 
 /** Boton_Cajon_Flotante (esquina inferior izquierda). */
@@ -49,19 +58,25 @@ export type LayoutCaja = {
   anchoTarjeta: number;
   /** Escritorio: 30 % del ancho entre 300 y 420. Móvil: el ancho de la ventana. */
   anchoCarrito: number;
-  /** Alto − encabezado (− barra inferior en móvil). */
+  /** Alto − encabezado con turno (− barra inferior en móvil). */
   altoDisponible: number;
   /** floor(0,85 × alto). */
   altoCarritoExpandido: number;
-  /** 'acciones' si ancho < 480, 'reloj' si < 768, 'completo' desde 768. */
-  encabezado: ParteEncabezado;
   /**
-   * min(anchoBotonMax, (ancho − 2×margen − izquierda − gapIzq − 5×gap) / 6);
-   * gapIzq = 0 si izquierda = 0.
+   * Lo que va a la izquierda del Grupo_Acciones con turno: 'completo' (logo + reloj) si los
+   * botones quedan de anchoEnLinea o más; si no, 'reloj' si quedan de anchoApilado o más;
+   * si no, 'acciones'.
    */
+  encabezado: ParteEncabezado;
+  /** 1 fila de 6, o 2 filas de 3 cuando ni sin reloj caben de anchoApilado. */
+  filasAcciones: 1 | 2;
+  /** min(anchoBotonMax, (ancho − 2×margen − izquierda − gapIzq − (porFila−1)×gap) / porFila). */
   anchoBotonAccion: number;
-  /** Ícono y texto desde 1280 px de ancho; antes, solo ícono. */
-  textoEnAcciones: boolean;
+  altoBotonAccion: number;
+  /** 'en-linea': ícono al lado del nombre; 'apilada': ícono encima del nombre. */
+  etiquetaAcciones: 'en-linea' | 'apilada';
+  /** Alto del Encabezado_Caja con turno: 96 con 1 fila, más alto con 2 filas. */
+  altoEncabezado: number;
   /** Posición del Boton_Cajon_Flotante y espacio a reservar al final de las zonas con scroll. */
   cajonFlotante: { left: number; bottom: number; tamano: number; reserva: number };
 };
@@ -76,10 +91,32 @@ function clamp(valor: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, valor));
 }
 
-function parteEncabezado(ancho: number): ParteEncabezado {
-  if (ancho < ENCABEZADO.conReloj) return 'acciones';
-  if (ancho < ENCABEZADO.conLogo) return 'reloj';
-  return 'completo';
+/** Ancho de cada Boton_Accion con la parte izquierda dada y `porFila` botones por fila. */
+function anchoBoton(ancho: number, margen: number, parte: ParteEncabezado, porFila: number): number {
+  const izquierda = ENCABEZADO.izquierda[parte];
+  const gapIzquierda = izquierda > 0 ? ENCABEZADO.gapIzquierda : 0;
+  return Math.min(
+    ENCABEZADO.anchoBotonMax,
+    (ancho - 2 * margen - izquierda - gapIzquierda - (porFila - 1) * ENCABEZADO.gap) / porFila,
+  );
+}
+
+/** Reparto del encabezado con turno: los nombres de los botones tienen prioridad sobre logo y reloj. */
+function repartoEncabezado(ancho: number, margen: number) {
+  const seis = ENCABEZADO.botones;
+  const completo = anchoBoton(ancho, margen, 'completo', seis);
+  if (completo >= ENCABEZADO.anchoEnLinea) {
+    return { parte: 'completo' as const, filas: 1 as const, ancho: completo };
+  }
+  const reloj = anchoBoton(ancho, margen, 'reloj', seis);
+  if (reloj >= ENCABEZADO.anchoApilado) return { parte: 'reloj' as const, filas: 1 as const, ancho: reloj };
+  const solo = anchoBoton(ancho, margen, 'acciones', seis);
+  if (solo >= ENCABEZADO.anchoApilado) return { parte: 'acciones' as const, filas: 1 as const, ancho: solo };
+  return {
+    parte: 'acciones' as const,
+    filas: 2 as const,
+    ancho: anchoBoton(ancho, margen, 'acciones', seis / 2),
+  };
 }
 
 /** Calcula el layout de Caja para una ventana de `ancho` × `alto` píxeles. */
@@ -104,19 +141,17 @@ export function calcularLayout(ancho: number, alto: number): LayoutCaja {
 
   const anchoTarjeta = (anchoCuadricula - MEDIDAS.gap * (columnas - 1)) / columnas;
 
-  // Los botones de acción van dentro del encabezado: no hay fila aparte que restar.
-  const altoDisponible = h - MEDIDAS.encabezado - (escritorio ? 0 : MEDIDAS.barraMovil);
-
   // Grupo_Acciones: lo que queda a la derecha de la parte izquierda del encabezado.
-  const encabezado = parteEncabezado(a);
   const margen = escritorio ? ENCABEZADO.margen.escritorio : ENCABEZADO.margen.movil;
-  const izquierda = ENCABEZADO.izquierda[encabezado];
-  const gapIzquierda = izquierda > 0 ? ENCABEZADO.gapIzquierda : 0;
-  const anchoBotonAccion = Math.min(
-    ENCABEZADO.anchoBotonMax,
-    (a - 2 * margen - izquierda - gapIzquierda - (ENCABEZADO.botones - 1) * ENCABEZADO.gap) /
-      ENCABEZADO.botones,
-  );
+  const reparto = repartoEncabezado(a, margen);
+  const dosFilas = reparto.filas === 2;
+  const altoBotonAccion = dosFilas ? ENCABEZADO.altoBotonDosFilas : ENCABEZADO.altoBoton;
+  const altoEncabezado = dosFilas
+    ? 2 * ENCABEZADO.altoBotonDosFilas + ENCABEZADO.gapFilas + 2 * ENCABEZADO.margenVerticalDosFilas
+    : MEDIDAS.encabezado;
+
+  // Los botones de acción van dentro del encabezado: no hay fila aparte que restar.
+  const altoDisponible = h - altoEncabezado - (escritorio ? 0 : MEDIDAS.barraMovil);
 
   const cajonFlotante = {
     left: CAJON_FLOTANTE.margen,
@@ -133,9 +168,12 @@ export function calcularLayout(ancho: number, alto: number): LayoutCaja {
     anchoCarrito,
     altoDisponible,
     altoCarritoExpandido: Math.floor(CARRITO_EXPANDIDO_FRACCION * h),
-    encabezado,
-    anchoBotonAccion,
-    textoEnAcciones: a >= ENCABEZADO.conTexto,
+    encabezado: reparto.parte,
+    filasAcciones: reparto.filas,
+    anchoBotonAccion: reparto.ancho,
+    altoBotonAccion,
+    etiquetaAcciones: reparto.ancho >= ENCABEZADO.anchoEnLinea ? 'en-linea' : 'apilada',
+    altoEncabezado,
     cajonFlotante,
   };
 }
