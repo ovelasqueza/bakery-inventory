@@ -678,6 +678,7 @@ export function PuntoVenta() {
         onCobrar={cobrar}
         expandido={panelExpandido}
         onExpandir={setPanelExpandido}
+        ocultarAccion={vista === 'cobrando'}
       />
     );
   }
