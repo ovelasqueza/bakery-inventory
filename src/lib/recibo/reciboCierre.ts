@@ -18,14 +18,12 @@ import {
 /** Máximo de filas por lista antes de "... y K más". */
 export interface LimitesRecibo {
   gastos: number;
-  /** Aplica a PRODUCTOS y a AUTOCONSUMO. */
   productos: number;
 }
 
 export const SIN_MOVIMIENTOS = 'Sin movimientos';
 export const AVISO_AUTOCONSUMO = 'Valor de referencia, no es dinero';
 export const SUFIJO_CAJA_MAYOR = ' (Caja mayor)';
-/** Dato ausente (turnos antiguos). Se usa '-' ASCII porque '—' no existe en PC850 y saldría '?'. */
 export const SIN_DATO = '-';
 
 const SIN_LIMITE: LimitesRecibo = { gastos: Infinity, productos: Infinity };
@@ -41,6 +39,10 @@ function limpio(texto: string): string {
 
 function linea(texto: string, estilo: Estilo = 'normal', alineacion: Alineacion = 'izquierda'): LineaRecibo {
   return { texto: recortar(texto, anchoDe(estilo)), estilo, alineacion };
+}
+
+function salto(): LineaRecibo {
+  return { texto: '', estilo: 'normal', alineacion: 'izquierda' };
 }
 
 function filaDinero(izquierda: string, valor: number, estilo: Estilo = 'normal'): LineaRecibo {
@@ -84,58 +86,15 @@ function datosTurno(t: DatosRecibo['turno'], ahora: Date): LineaRecibo[] {
 
 function seccionVentas(v: DatosRecibo['ventas']): LineaRecibo[] {
   const filas: LineaRecibo[] = [titulo('VENTAS')];
-  if (v.porMetodo.length === 0) filas.push(linea(SIN_MOVIMIENTOS));
-  filas.push(filaDinero(`Ventas registradas (${v.cantidad})`, v.total));
-  for (const m of v.porMetodo) {
-    filas.push(filaDinero(`  ${limpio(m.nombre)} (${m.cantidad})`, m.total));
+  if (v.porMetodo.length === 0) {
+    filas.push(linea(SIN_MOVIMIENTOS));
+  } else {
+    for (const m of v.porMetodo) {
+      filas.push(filaDinero(limpio(m.nombre), m.total));
+    }
   }
-  filas.push(filaDinero('Ventas por valor', v.valorTotal));
-  filas.push(filaDinero(`Anuladas (${v.anuladasCantidad})`, v.anuladasTotal));
+  filas.push(filaDinero('TOTAL VENTAS', v.total, 'negrita'));
   return filas;
-}
-
-function filaGasto(g: DatosRecibo['gastos']['lista'][number]): LineaRecibo {
-  const valor = dineroRecibo(g.valor);
-  const nombre = limpio(g.concepto) || limpio(g.categoria);
-  const sufijo = g.cajon === 0 ? SUFIJO_CAJA_MAYOR : '';
-  // El sufijo se conserva aunque el concepto sea largo: se recorta solo el concepto.
-  const disponible = Math.max(0, anchoDe('normal') - largo(valor) - 1 - largo(sufijo));
-  return { texto: fila(recortar(nombre, disponible) + sufijo, valor), estilo: 'normal', alineacion: 'izquierda' };
-}
-
-function seccionGastos(g: DatosRecibo['gastos'], limite: number): LineaRecibo[] {
-  const filas: LineaRecibo[] = [titulo('GASTOS/PEDIDOS')];
-  if (g.lista.length === 0) filas.push(linea(SIN_MOVIMIENTOS));
-  const mostrados = g.lista.slice(0, limite);
-  filas.push(...mostrados.map(filaGasto));
-  if (mostrados.length < g.lista.length) filas.push(lineaRecorte(g.lista.length - mostrados.length));
-  filas.push(filaDinero('Total gastos', g.total));
-  filas.push(filaDinero('  Del cajón', g.cajon));
-  filas.push(filaDinero('  De caja mayor', g.mayor));
-  return filas;
-}
-
-function filaNulable(izquierda: string, valor: number | null): LineaRecibo {
-  if (valor === null) {
-    return { texto: fila(izquierda, SIN_DATO), estilo: 'normal', alineacion: 'izquierda' };
-  }
-  return filaDinero(izquierda, valor);
-}
-
-function seccionDinero(datos: DatosRecibo): LineaRecibo[] {
-  const t = datos.turno;
-  return [
-    titulo('DINERO'),
-    filaDinero('Base inicial', t.base),
-    filaDinero('Ventas en efectivo', datos.ventas.efectivo),
-    filaDinero('Gastos del cajón', datos.gastos.cajon),
-    filaDinero('Retiros', datos.retiros.total),
-    filaDinero('Efectivo esperado', t.efectivoEsperado),
-    filaDinero('Efectivo contado', t.efectivoContado),
-    { texto: fila('Diferencia', textoDiferencia(t.diferencia), anchoDe('negrita')), estilo: 'negrita', alineacion: 'izquierda' },
-    filaNulable('Base dejada', t.baseSiguiente),
-    filaNulable('Enviado a caja mayor', t.enviadoMayor),
-  ];
 }
 
 /** Filas "cantidad nombre ... $ valor" con las cantidades alineadas, o "Sin movimientos". */
@@ -156,49 +115,98 @@ function suma(lista: { valor: number }[]): number {
 }
 
 function seccionProductos(lista: DatosRecibo['productos'], limite: number): LineaRecibo[] {
-  return [titulo('PRODUCTOS'), ...filasProductos(lista, limite), filaDinero('Total', suma(lista))];
-}
-
-/** Sección aparte de PRODUCTOS: lo que se consumió en la panadería no es venta ni dinero. */
-function seccionAutoconsumo(a: DatosRecibo['autoconsumo'], limite: number): LineaRecibo[] {
   return [
-    titulo('AUTOCONSUMO'),
-    linea(AVISO_AUTOCONSUMO),
-    ...filasProductos(a.productos, limite),
-    filaDinero('Total', a.total),
+    titulo('RESUMEN DE PRODUCTOS'),
+    ...filasProductos(lista, limite),
+    filaDinero('Total productos', suma(lista), 'negrita'),
   ];
 }
 
-/** Lineas_Recibo en orden: encabezado, datos del turno, VENTAS, GASTOS/PEDIDOS, DINERO, PRODUCTOS, AUTOCONSUMO (si hay). */
+function filaGasto(g: DatosRecibo['gastos']['lista'][number]): LineaRecibo {
+  const valor = dineroRecibo(g.valor);
+  const nombre = limpio(g.concepto) || limpio(g.categoria);
+  const sufijo = g.cajon === 0 ? SUFIJO_CAJA_MAYOR : '';
+  const disponible = Math.max(0, anchoDe('normal') - largo(valor) - 1 - largo(sufijo));
+  return { texto: fila(recortar(nombre, disponible) + sufijo, valor), estilo: 'normal', alineacion: 'izquierda' };
+}
+
+function seccionGastos(g: DatosRecibo['gastos'], limite: number): LineaRecibo[] {
+  const filas: LineaRecibo[] = [titulo('GASTOS DEL TURNO')];
+  if (g.lista.length === 0) filas.push(linea(SIN_MOVIMIENTOS));
+  const mostrados = g.lista.slice(0, limite);
+  filas.push(...mostrados.map(filaGasto));
+  if (mostrados.length < g.lista.length) filas.push(lineaRecorte(g.lista.length - mostrados.length));
+  filas.push(filaDinero('Total gastos', g.total, 'negrita'));
+  return filas;
+}
+
+function etiquetaDiferencia(diferencia: number): string {
+  const d = Math.round(diferencia);
+  if (d > 0) return 'Sobrante';
+  if (d < 0) return 'Faltante';
+  return 'Cuadre exacto';
+}
+
+function seccionCuadre(datos: DatosRecibo): LineaRecibo[] {
+  const t = datos.turno;
+  const filas: LineaRecibo[] = [
+    titulo('CUADRE DE CAJA'),
+    filaDinero('Base inicial', t.base),
+    filaDinero('Ventas en efectivo', datos.ventas.efectivo),
+    filaDinero('Gastos de caja', datos.gastos.cajon),
+  ];
+  if (datos.retiros.total > 0) {
+    filas.push(filaDinero('Retiros de caja', datos.retiros.total));
+  }
+  filas.push(
+    salto(),
+    filaDinero('Efectivo esperado', t.efectivoEsperado, 'negrita'),
+    filaDinero('Dinero contado', t.efectivoContado, 'negrita'),
+    salto(),
+    {
+      texto: fila(etiquetaDiferencia(t.diferencia), textoDiferencia(t.diferencia), anchoDe('negrita')),
+      estilo: 'negrita',
+      alineacion: 'izquierda',
+    },
+  );
+  return filas;
+}
+
+/**
+ * Lineas_Recibo organizadas con saltos de línea entre bloques:
+ * 1. Encabezado y datos del turno
+ * 2. VENTAS (Efectivo, QR/otros métodos y Total ventas)
+ * 3. GASTOS DEL TURNO
+ * 4. CUADRE DE CAJA (Base, Ventas efectivo, Gastos, Esperado, Contado y Sobrante/Faltante)
+ * 5. RESUMEN DE PRODUCTOS (al final)
+ */
 export function lineasReciboCierre(
   datos: DatosRecibo,
   ahora: Date,
   limites: LimitesRecibo = SIN_LIMITE,
 ): LineaRecibo[] {
-  const sep = linea(separador('-'));
-  const lineas: LineaRecibo[] = [
+  const divisor = (): LineaRecibo[] => [salto(), linea(separador('-')), salto()];
+  return [
     ...encabezado(),
     ...datosTurno(datos.turno, ahora),
-    sep,
+    ...divisor(),
     ...seccionVentas(datos.ventas),
-    sep,
+    ...divisor(),
     ...seccionGastos(datos.gastos, limites.gastos),
-    sep,
-    ...seccionDinero(datos),
-    sep,
+    ...divisor(),
+    ...seccionCuadre(datos),
+    ...divisor(),
     ...seccionProductos(datos.productos, limites.productos),
+    salto(),
+    linea(separador('=')),
   ];
-  if (datos.autoconsumo.productos.length > 0) {
-    lineas.push(sep, ...seccionAutoconsumo(datos.autoconsumo, limites.productos));
-  }
-  return lineas;
 }
 
 /** lineasReciboCierre + armarBytes; si supera MAX_BYTES_RECIBO baja los límites a la mitad hasta caber. */
 export function bytesReciboCierre(datos: DatosRecibo, ahora: Date): Uint8Array {
   let limites: LimitesRecibo = {
     gastos: datos.gastos.lista.length,
-    productos: Math.max(datos.productos.length, datos.autoconsumo.productos.length),
+    productos: datos.productos.length,
   };
   for (;;) {
     const bytes = armarBytes(lineasReciboCierre(datos, ahora, limites));
