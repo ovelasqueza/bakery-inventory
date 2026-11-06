@@ -142,6 +142,7 @@ type MetodoEmbebido = { nombre: string } | { nombre: string }[] | null;
 
 type FilaVenta = {
   id: string;
+  clave: string;
   creado_en: string;
   total: number;
   metodo_pago_id: string;
@@ -265,7 +266,7 @@ export async function obtenerCatalogoCaja(): Promise<CatalogoCaja> {
 }
 
 /** Deriva un segundo UUID determinístico a partir de `uuid` para idempotencia del respaldo combinado. */
-function derivarUuidSecundario(uuid: string): string {
+export function derivarUuidSecundario(uuid: string): string {
   const ultimo = uuid.slice(-1).toLowerCase();
   const reemplazo = ultimo === '0' ? '1' : '0';
   return `${uuid.slice(0, -1)}${reemplazo}`;
@@ -378,7 +379,7 @@ export async function ventasDelTurno(turnoId: string): Promise<VentaTurno[]> {
     respuesta = await supabase
       .from('ventas')
       .select(
-        'id,creado_en,total,metodo_pago_id,es_efectivo,efectivo_recibido,cambio,estado,' +
+        'id,clave,creado_en,total,metodo_pago_id,es_efectivo,efectivo_recibido,cambio,estado,' +
           'anulada_en,anulada_por,motivo_anulacion,tipo,metodos_pago(nombre)'
       )
       .eq('turno_id', turnoId)
@@ -390,31 +391,86 @@ export async function ventasDelTurno(turnoId: string): Promise<VentaTurno[]> {
   const { data, error, status } = respuesta;
   if (error) throw traducirError(error, status);
 
-  return ((data ?? []) as unknown as FilaVenta[]).map((v) => ({
-    id: v.id,
-    creadoEn: v.creado_en,
-    total: v.total,
-    metodoPagoId: v.metodo_pago_id,
-    metodoNombre: primero(v.metodos_pago)?.nombre ?? null,
-    esEfectivo: v.es_efectivo,
-    efectivoRecibido: v.efectivo_recibido,
-    cambio: v.cambio,
-    estado: v.estado,
-    anuladaEn: v.anulada_en,
-    anuladaPor: v.anulada_por,
-    motivoAnulacion: v.motivo_anulacion,
-    tipo: v.tipo ?? 'productos',
-  }));
+  const filas = (data ?? []) as unknown as FilaVenta[];
+  const porClave = new Map<string, FilaVenta>();
+  for (const f of filas) {
+    if (f.clave) porClave.set(f.clave.toLowerCase(), f);
+  }
+
+  const secundariasOcultas = new Set<string>();
+  const secundariasPorPrincipal = new Map<string, FilaVenta>();
+
+  for (const f of filas) {
+    const tipo = f.tipo ?? 'productos';
+    if (tipo === 'productos' && f.clave) {
+      const claveSec = derivarUuidSecundario(f.clave).toLowerCase();
+      const cand = porClave.get(claveSec);
+      if (cand && cand.id !== f.id && (cand.tipo ?? 'productos') === 'valor') {
+        secundariasOcultas.add(cand.id);
+        secundariasPorPrincipal.set(f.id, cand);
+      }
+    }
+  }
+
+  return filas
+    .filter((v) => !secundariasOcultas.has(v.id))
+    .map((v) => {
+      const sec = secundariasPorPrincipal.get(v.id);
+      return {
+        id: v.id,
+        creadoEn: v.creado_en,
+        total: v.total + (sec ? sec.total : 0),
+        metodoPagoId: v.metodo_pago_id,
+        metodoNombre: primero(v.metodos_pago)?.nombre ?? null,
+        esEfectivo: v.es_efectivo,
+        efectivoRecibido: v.efectivo_recibido + (sec ? sec.efectivo_recibido : 0),
+        cambio: v.cambio + (sec ? sec.cambio : 0),
+        estado: v.estado,
+        anuladaEn: v.anulada_en,
+        anuladaPor: v.anulada_por,
+        motivoAnulacion: v.motivo_anulacion,
+        tipo: v.tipo ?? 'productos',
+      };
+    });
+}
+
+async function buscarVentaSecundariaCombinada(ventaPrincipalId: string): Promise<string | null> {
+  const { data: orig } = await supabase
+    .from('ventas')
+    .select('clave, tipo')
+    .eq('id', ventaPrincipalId)
+    .maybeSingle();
+  if (!orig?.clave || (orig.tipo ?? 'productos') !== 'productos') return null;
+
+  const claveSec = derivarUuidSecundario(String(orig.clave));
+  const { data: sec } = await supabase
+    .from('ventas')
+    .select('id, tipo')
+    .eq('clave', claveSec)
+    .maybeSingle();
+  if (!sec?.id || sec.tipo !== 'valor') return null;
+  return String(sec.id);
 }
 
 /** Anula una venta del turno abierto; idempotente por `clave` (Req 7.2, 7.7, 7.8). */
 export async function anularVenta(entrada: EntradaAnulacion): Promise<ResultadoAnulacion> {
+  const secundariaId = await buscarVentaSecundariaCombinada(entrada.ventaId).catch(() => null);
   const r = await llamarRpc<AnularVentaCrudo>('anular_venta', {
     p_venta: entrada.ventaId,
     p_clave: entrada.clave,
     p_motivo: entrada.motivo,
     p_persona: entrada.persona,
   });
+
+  if (secundariaId) {
+    await llamarRpc<AnularVentaCrudo>('anular_venta', {
+      p_venta: secundariaId,
+      p_clave: derivarUuidSecundario(entrada.clave),
+      p_motivo: entrada.motivo,
+      p_persona: entrada.persona,
+    }).catch(() => undefined);
+  }
+
   if (r.resultado === 'ya_anulada') {
     return {
       resultado: 'ya_anulada',
@@ -441,17 +497,42 @@ export async function anularVenta(entrada: EntradaAnulacion): Promise<ResultadoA
 
 /** Cabecera y líneas de una venta. */
 export async function detalleVenta(ventaId: string): Promise<DetalleVenta> {
-  const r = await llamarRpc<DetalleVentaCrudo>('detalle_venta', { p_venta: ventaId });
+  const [r, secundariaId] = await Promise.all([
+    llamarRpc<DetalleVentaCrudo>('detalle_venta', { p_venta: ventaId }),
+    buscarVentaSecundariaCombinada(ventaId).catch(() => null),
+  ]);
+
+  let rSec: DetalleVentaCrudo | null = null;
+  if (secundariaId) {
+    rSec = await llamarRpc<DetalleVentaCrudo>('detalle_venta', { p_venta: secundariaId }).catch(() => null);
+  }
+
   const v = r.venta;
+  const secV = rSec?.venta;
+  const detallesPrincipales = (r.detalles ?? []).map((d) => ({
+    productoId: d.producto_id,
+    nombreProducto: d.nombre_producto,
+    cantidad: d.cantidad,
+    precioUnitario: d.precio_unitario,
+    subtotal: d.subtotal,
+  }));
+  const detallesSecundarios = (rSec?.detalles ?? []).map((d) => ({
+    productoId: d.producto_id,
+    nombreProducto: d.nombre_producto,
+    cantidad: d.cantidad,
+    precioUnitario: d.precio_unitario,
+    subtotal: d.subtotal,
+  }));
+
   return {
     venta: {
       id: v.id,
       creadoEn: v.creado_en,
-      total: v.total,
+      total: v.total + (secV ? secV.total : 0),
       metodoPagoId: v.metodo_pago_id,
       esEfectivo: v.es_efectivo,
-      efectivoRecibido: v.efectivo_recibido,
-      cambio: v.cambio,
+      efectivoRecibido: v.efectivo_recibido + (secV ? secV.efectivo_recibido : 0),
+      cambio: v.cambio + (secV ? secV.cambio : 0),
       estado: v.estado,
       anuladaEn: v.anulada_en,
       anuladaPor: v.anulada_por,
@@ -459,12 +540,6 @@ export async function detalleVenta(ventaId: string): Promise<DetalleVenta> {
       turnoId: v.turno_id,
       tipo: v.tipo ?? 'productos',
     },
-    detalles: (r.detalles ?? []).map((d) => ({
-      productoId: d.producto_id,
-      nombreProducto: d.nombre_producto,
-      cantidad: d.cantidad,
-      precioUnitario: d.precio_unitario,
-      subtotal: d.subtotal,
-    })),
+    detalles: [...detallesPrincipales, ...detallesSecundarios],
   };
 }

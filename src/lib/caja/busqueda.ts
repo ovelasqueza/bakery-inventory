@@ -24,8 +24,9 @@ export function normalizarTexto(s: string): string {
 }
 
 /**
- * Deja los productos cuyo nombre contiene el texto (normalizado) y que son de la categoría
- * pedida. Con 'todas' entran todas las categorías y los productos sin categoría.
+ * Deja los productos cuyo nombre contiene el texto (normalizado).
+ * Cuando hay texto de búsqueda, busca siempre en todas las categorías;
+ * cuando el buscador está vacío, filtra por la categoría seleccionada.
  * Conserva el orden de entrada.
  */
 export function filtrarProductos(
@@ -34,11 +35,10 @@ export function filtrarProductos(
   categoriaId: string | 'todas'
 ): ProductoCaja[] {
   const buscado = normalizarTexto(texto);
-  return ps.filter(
-    (p) =>
-      (categoriaId === 'todas' || p.categoriaId === categoriaId) &&
-      (buscado === '' || normalizarTexto(p.nombre).includes(buscado))
-  );
+  if (buscado !== '') {
+    return ps.filter((p) => normalizarTexto(p.nombre).includes(buscado));
+  }
+  return ps.filter((p) => categoriaId === 'todas' || p.categoriaId === categoriaId);
 }
 
 /** Orden ascendente; sin orden (null) al final; empates por nombre normalizado con localeCompare('es'). */

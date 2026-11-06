@@ -1,6 +1,8 @@
 import { llamarRpc } from '@/lib/api/errores';
 import { obtenerIdsGastosValesRespaldo } from '@/lib/api/vales';
+import { derivarUuidSecundario } from '@/lib/api/ventas';
 import type { Rango } from '@/lib/fechas/bogota';
+import { supabase } from '@/lib/supabase';
 import type {
   AutoconsumoReporte,
   CategoriaGastoReporte,
@@ -216,13 +218,64 @@ function aAutoconsumo(a: AutoconsumoCrudo): AutoconsumoReporte {
  * llegan como `SIN_CONEXION` para que la vista conserve el último reporte (Req 12.13).
  */
 export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
-  const [data, idsValesRespaldo] = await Promise.all([
+  const inicioIso = `${rango.desde}T00:00:00.000-05:00`;
+  const finIso = `${rango.hasta}T23:59:59.999-05:00`;
+
+  const [data, idsValesRespaldo, resClaves] = await Promise.all([
     llamarRpc<ReporteCrudo>('reporte_rango', {
       p_desde: rango.desde,
       p_hasta: rango.hasta,
     }),
     obtenerIdsGastosValesRespaldo().catch(() => new Set<string>()),
+    Promise.resolve(
+      supabase
+        .from('ventas')
+        .select('id, clave, tipo')
+        .gte('creado_en', inicioIso)
+        .lte('creado_en', finIso)
+    ).catch(() => ({ data: null })),
   ]);
+
+  const todasVentas = (data.ventas ?? []).map(aVenta);
+  const filasClave = (resClaves?.data ?? []) as { id: string; clave: string; tipo?: string | null }[];
+  const porClave = new Map<string, string>();
+  const claveDeId = new Map<string, string>();
+  for (const fc of filasClave) {
+    if (fc.clave) {
+      porClave.set(fc.clave.toLowerCase(), fc.id);
+      claveDeId.set(fc.id, fc.clave.toLowerCase());
+    }
+  }
+
+  const ventaPorId = new Map(todasVentas.map((v) => [v.id, v] as const));
+  const secundariasOcultas = new Set<string>();
+  const secundariaPorPrincipal = new Map<string, VentaReporte>();
+
+  for (const v of todasVentas) {
+    const clave = claveDeId.get(v.id);
+    if (v.tipo === 'productos' && clave) {
+      const idSec = porClave.get(derivarUuidSecundario(clave).toLowerCase());
+      const vSec = idSec ? ventaPorId.get(idSec) : undefined;
+      if (vSec && vSec.id !== v.id && vSec.tipo === 'valor') {
+        secundariasOcultas.add(vSec.id);
+        secundariaPorPrincipal.set(v.id, vSec);
+      }
+    }
+  }
+
+  const ventas = todasVentas
+    .filter((v) => !secundariasOcultas.has(v.id))
+    .map((v) => {
+      const sec = secundariaPorPrincipal.get(v.id);
+      return sec
+        ? {
+            ...v,
+            total: v.total + sec.total,
+            efectivoRecibido: v.efectivoRecibido + sec.efectivoRecibido,
+            cambio: v.cambio + sec.cambio,
+          }
+        : v;
+    });
 
   const todosGastos = (data.gastos ?? []).map(aGasto);
   const valesPorTurno = new Map<string, number>();
@@ -241,7 +294,7 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
   });
 
   return {
-    ventas: (data.ventas ?? []).map(aVenta),
+    ventas,
     productos: (data.productos ?? []).map(aProducto),
     gastos,
     turnos,

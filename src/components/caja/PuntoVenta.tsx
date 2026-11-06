@@ -29,7 +29,7 @@ import { BarraBusqueda } from '@/components/caja/BarraBusqueda';
 import { BotonAbrirCajon } from '@/components/caja/BotonAbrirCajon';
 import { CalculadoraVenta, textoAvisoCalculadora } from '@/components/caja/CalculadoraVenta';
 import { CierreTurno } from '@/components/caja/CierreTurno';
-import { ConfirmacionVenta } from '@/components/caja/ConfirmacionVenta';
+import { ConfirmacionVenta, type DatosConfirmacionVenta } from '@/components/caja/ConfirmacionVenta';
 import { CuadriculaProductos } from '@/components/caja/CuadriculaProductos';
 import { DialogoAutoconsumo } from '@/components/caja/DialogoAutoconsumo';
 import { DialogoRetiro } from '@/components/caja/DialogoRetiro';
@@ -164,7 +164,7 @@ export function PuntoVenta() {
   const [vista, setVista] = useState<Vista>('vendiendo');
   /** Cierre exitoso y el turno que se cerró (para imprimir su recibo, Req 5.1). */
   const [cierre, setCierre] = useState<{ cierre: Cierre; turnoId: string } | null>(null);
-  const [confirmacion, setConfirmacion] = useState<{ total: number; cambio: number | null } | null>(null);
+  const [confirmacion, setConfirmacion] = useState<DatosConfirmacionVenta | null>(null);
   /** Panel derecho expandido en móvil (Pedido, Autoconsumo o Valores). */
   const [panelExpandido, setPanelExpandido] = useState(false);
   const [dialogoAutoconsumo, setDialogoAutoconsumo] = useState(false);
@@ -236,6 +236,11 @@ export function PuntoVenta() {
   const limpiarBusqueda = useCallback(() => {
     setTexto('');
     setCategoriaId('todas');
+  }, []);
+
+  const elegirCategoria = useCallback((id: string | 'todas') => {
+    setCategoriaId(id);
+    setTexto('');
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -332,11 +337,21 @@ export function PuntoVenta() {
   );
 
   const alRegistrada = useCallback(
-    (venta: VentaRegistrada) => {
+    (
+      venta: VentaRegistrada,
+      _esEfectivo?: boolean,
+      opciones?: { metodoNombre?: string | null; yaImpreso?: boolean }
+    ) => {
       despachar({ tipo: 'vaciar' });
       fijarCalculadora(reducirCalculadora(calculadoraRef.current, { tipo: 'vaciar' }).estado);
       setVista('vendiendo');
-      setConfirmacion({ total: venta.total, cambio: venta.cambio });
+      setConfirmacion({
+        ventaId: venta.ventaId,
+        total: venta.total,
+        cambio: venta.cambio,
+        metodoNombre: opciones?.metodoNombre ?? null,
+        yaImpreso: opciones?.yaImpreso ?? false,
+      });
     },
     [despachar, fijarCalculadora]
   );
@@ -371,11 +386,18 @@ export function PuntoVenta() {
   const alRegistradaValor = useCallback(
     (venta: VentaRegistrada) => {
       // Mientras registra, despacharCalculadora no tiene efecto: se vacía directo (Req 6.8).
+      const metodoNombre = metodosPago.find((m) => m.id === metodoValorVigenteId)?.nombre ?? null;
       fijarCalculadora(reducirCalculadora(calculadoraRef.current, { tipo: 'vaciar' }).estado);
       setMetodoValorId(metodoPorDefecto(metodosPago));
-      setConfirmacion({ total: venta.total, cambio: null }); // sin cambio: no se sabe cuánto entregó
+      setConfirmacion({
+        ventaId: venta.ventaId,
+        total: venta.total,
+        cambio: null,
+        metodoNombre,
+        yaImpreso: false,
+      }); // sin cambio: no se sabe cuánto entregó
     },
-    [fijarCalculadora, metodosPago]
+    [fijarCalculadora, metodoValorVigenteId, metodosPago]
   );
 
   const cobro = useCobroDirecto({
@@ -669,7 +691,7 @@ export function PuntoVenta() {
             onTexto={setTexto}
             categorias={catalogo.categorias}
             categoriaId={categoriaId}
-            onCategoria={setCategoriaId}
+            onCategoria={elegirCategoria}
           />
         </div>
         <div className="min-h-0 flex-1">{zonaProductos}</div>

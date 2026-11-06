@@ -11,6 +11,8 @@ import { registrarVenta, registrarVentaValor, type VentaRegistrada } from '@/lib
 import { ErrorApp } from '@/lib/api/errores';
 import type { MetodoPagoParam } from '@/lib/api/parametros';
 import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
+import { imprimirReciboVenta, mensajeImpresionVenta } from '@/lib/recibo/reciboVenta';
+import { useToast } from '@/components/ui';
 import { AvisoSinConexion } from './AvisoSinConexion';
 
 export type AccionConfirmarCobro = {
@@ -28,7 +30,7 @@ interface PanelCobroProps {
   /** Métodos de pago activos, ya ordenados. */
   metodos: MetodoPagoParam[];
   onCancelar: () => void;
-  onRegistrada: (venta: VentaRegistrada, esEfectivo: boolean) => void;
+  onRegistrada: (venta: VentaRegistrada, esEfectivo: boolean, opciones?: { metodoNombre?: string | null; yaImpreso?: boolean }) => void;
   onTurnoCerrado: () => void;
   /** El padre recarga el catálogo y concilia el Carrito. Solo aplica a un pedido de productos. */
   onPreciosActualizados?: () => void;
@@ -73,12 +75,14 @@ export function PanelCobro({
   reservaInferior,
   onCambioConfirmacion,
 }: PanelCobroProps) {
+  const { showToast } = useToast();
   const enProceso = useRef(false);
   const metodosRef = useRef(metodos);
   metodosRef.current = metodos;
 
   const [metodoId, setMetodoId] = useState<string | null>(() => metodoInicial(metodos));
   const [recibido, setRecibido] = useState(0);
+  const [imprimirTiquete, setImprimirTiquete] = useState(false);
   const [registrando, setRegistrando] = useState(false);
   const [error, setError] = useState<ErrorCobro>(null);
 
@@ -95,11 +99,12 @@ export function PanelCobro({
     `${firmaPedido(pedido)}|${metodoId ?? ''}|${esEfectivo ? recibido : ''}`
   );
 
-  // Cada vez que se entra al cobro empieza limpio, con efectivo escogido.
+  // Cada vez que se entra al cobro empieza limpio, con efectivo escogido y sin imprimir por defecto.
   useEffect(() => {
     if (!abierto) return;
     setMetodoId(metodoInicial(metodosRef.current));
     setRecibido(0);
+    setImprimirTiquete(false);
     setError(null);
     setRegistrando(false);
     enProceso.current = false;
@@ -134,8 +139,13 @@ export function PanelCobro({
         // El cajón no frena la confirmación; su aviso lo maneja quien lo abre.
         void abrirCajon().catch(() => undefined);
       }
+      if (imprimirTiquete) {
+        void imprimirReciboVenta(venta.ventaId, metodo.nombre).then((r) => {
+          showToast(mensajeImpresionVenta(r), r.ok ? 'success' : 'warning');
+        });
+      }
       renovar();
-      onRegistrada(venta, venta.esEfectivo);
+      onRegistrada(venta, venta.esEfectivo, { metodoNombre: metodo.nombre, yaImpreso: imprimirTiquete });
     } catch (e) {
       const codigo = e instanceof ErrorApp ? e.codigo : 'DESCONOCIDO';
       const esProductos = pedido.tipo === 'productos' && pedido.carrito.length > 0;
@@ -176,7 +186,7 @@ export function PanelCobro({
       enProceso.current = false;
       setRegistrando(false);
     }
-  }, [abrirCajon, pedido, clave, metodo, onPreciosActualizados, onRegistrada, onTurnoCerrado, recibido, renovar, total, turnoId]);
+  }, [abrirCajon, pedido, clave, imprimirTiquete, metodo, onPreciosActualizados, onRegistrada, onTurnoCerrado, recibido, renovar, showToast, total, turnoId]);
 
   const textoBoton = esEfectivo && completo && cambio > 0 ? `Cobrar · Cambio ${formatCurrency(cambio)}` : 'Cobrar';
 
@@ -324,6 +334,33 @@ export function PanelCobro({
             })}
           </div>
         )}
+        <button
+          type="button"
+          aria-pressed={imprimirTiquete}
+          disabled={registrando}
+          onClick={() => setImprimirTiquete((v) => !v)}
+          className={`flex min-h-[56px] shrink-0 items-center gap-2 rounded-2xl border-2 px-4 text-sm font-bold transition-colors disabled:opacity-50 ${
+            imprimirTiquete
+              ? 'border-lz-sage bg-lz-sage-light text-lz-sage-dark'
+              : 'border-lz-border bg-lz-surface text-lz-charcoal-muted hover:bg-lz-oat hover:text-lz-charcoal'
+          }`}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="h-5 w-5 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 9V2h12v7" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          {imprimirTiquete ? 'Imprimir: Sí' : 'Imprimir: No'}
+        </button>
       </div>
 
       {metodo && esEfectivo ? (

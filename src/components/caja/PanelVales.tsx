@@ -13,7 +13,7 @@ import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
 import { ErrorApp } from '@/lib/api/errores';
 import type { PersonaCajaParam } from '@/lib/api/parametros';
 import { resumenTurno } from '@/lib/api/turnos';
-import { eliminarVale, registrarVale, valesDelTurno, type Vale } from '@/lib/api/vales';
+import { registrarVale, valesDelTurno, type Vale } from '@/lib/api/vales';
 import { requiereAdvertencia } from '@/lib/caja/turno';
 import { conMiles, validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
 import { hora12 } from '@/lib/fechas/bogota';
@@ -86,9 +86,6 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
   const [guardando, setGuardando] = useState(false);
 
   const [advertencia, setAdvertencia] = useState<ValeValido | null>(null);
-  const [porEliminar, setPorEliminar] = useState<Vale | null>(null);
-  const [eliminando, setEliminando] = useState(false);
-  const [errorEliminar, setErrorEliminar] = useState<ErrorApp | null>(null);
   const [falloConexion, setFalloConexion] = useState<FalloConexion | null>(null);
 
   const firma = JSON.stringify([turnoId, saleDeCaja, valor.trim(), descripcion.trim(), empleado.trim()]);
@@ -199,43 +196,15 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
     if (falloConexion) void enviar(falloConexion.vale, falloConexion.confirmado, falloConexion.clave);
   }
 
-  async function confirmarEliminar() {
-    if (!porEliminar || eliminando) return;
-    setEliminando(true);
-    setErrorEliminar(null);
-    try {
-      await eliminarVale(porEliminar.id);
-      setPorEliminar(null);
-      showToast('Vale eliminado', 'success');
-      onCambio();
-      await cargar();
-    } catch (e) {
-      const err = e instanceof ErrorApp ? e : new ErrorApp('DESCONOCIDO', e);
-      if (err.codigo === 'TURNO_CERRADO') {
-        setPorEliminar(null);
-        turnoCerrado();
-      } else {
-        setErrorEliminar(err);
-      }
-    } finally {
-      setEliminando(false);
-    }
-  }
-
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || guardando || eliminando) return;
+      if (e.key !== 'Escape' || guardando) return;
       if (advertencia) setAdvertencia(null);
-      else if (porEliminar) {
-        setPorEliminar(null);
-        setErrorEliminar(null);
-      } else {
-        onCerrar();
-      }
+      else onCerrar();
     };
     window.addEventListener('keydown', alTeclear);
     return () => window.removeEventListener('keydown', alTeclear);
-  }, [advertencia, eliminando, guardando, onCerrar, porEliminar]);
+  }, [advertencia, guardando, onCerrar]);
 
   return (
     <div
@@ -244,7 +213,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
       aria-modal="true"
       aria-labelledby={idTitulo}
       onClick={(e) => {
-        if (e.target === e.currentTarget && !guardando && !eliminando) onCerrar();
+        if (e.target === e.currentTarget && !guardando) onCerrar();
       }}
     >
       <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
@@ -255,7 +224,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
           <button
             type="button"
             onClick={onCerrar}
-            disabled={guardando || eliminando}
+            disabled={guardando}
             aria-label="Cerrar"
             className="flex h-11 w-11 items-center justify-center rounded-xl text-lz-charcoal-muted transition-colors hover:bg-lz-oat disabled:opacity-50"
           >
@@ -450,22 +419,9 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
                       </div>
                       <p className=" break-words text-base font-semibold text-lz-charcoal">{v.descripcion}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-lz-display text-lg font-bold tabular-nums text-lz-charcoal">
-                        {formatCurrency(v.valor)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setErrorEliminar(null);
-                          setPorEliminar(v);
-                        }}
-                        aria-label={`Eliminar vale de ${v.empleado}`}
-                        className="min-h-[44px] min-w-[44px] rounded-xl border border-lz-danger-border px-3 text-sm font-semibold text-lz-danger transition-colors hover:bg-lz-danger-surface"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
+                    <span className="font-lz-display text-lg font-bold tabular-nums text-lz-charcoal">
+                      {formatCurrency(v.valor)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -503,56 +459,6 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
                 className="min-h-[48px] min-w-[44px] rounded-2xl bg-lz-amber px-5 text-base font-bold text-lz-surface hover:bg-lz-amber-warm"
               >
                 Registrar igual
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirmación para eliminar vale */}
-      {porEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-lz-charcoal/50 p-4">
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-label="Confirmar eliminación del vale"
-            className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-lz-surface p-6 shadow-lz-float"
-          >
-            <h3 className="font-lz-display text-xl font-bold text-lz-charcoal">¿Eliminar este vale?</h3>
-            <p className="text-base text-lz-charcoal">
-              <span className="font-semibold">{porEliminar.empleado}</span> · {porEliminar.descripcion} —{' '}
-              <span className="font-lz-display font-bold tabular-nums">{formatCurrency(porEliminar.valor)}</span>
-            </p>
-            {errorEliminar &&
-              (errorEliminar.codigo === 'SIN_CONEXION' ? (
-                <AvisoSinConexion onReintentar={() => void confirmarEliminar()} reintentando={eliminando} />
-              ) : (
-                <p
-                  role="alert"
-                  className="rounded-2xl border border-lz-danger-border bg-lz-danger-surface px-4 py-3 text-sm font-semibold text-lz-danger"
-                >
-                  {MENSAJE_NO_GUARDADO}
-                </p>
-              ))}
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                disabled={eliminando}
-                onClick={() => {
-                  setPorEliminar(null);
-                  setErrorEliminar(null);
-                }}
-                className="min-h-[48px] min-w-[44px] rounded-2xl border-2 border-lz-border px-5 text-base font-semibold text-lz-charcoal hover:bg-lz-sage-light disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={eliminando}
-                onClick={() => void confirmarEliminar()}
-                className="min-h-[48px] min-w-[44px] rounded-2xl bg-lz-danger px-5 text-base font-bold text-lz-surface hover:opacity-90 disabled:opacity-50"
-              >
-                {eliminando ? 'Eliminando…' : 'Sí, eliminar'}
               </button>
             </div>
           </div>
