@@ -42,8 +42,10 @@ interface PanelCarritoProps {
   nota?: string;
   /** Lista que muestra el panel. Por defecto 'venta' (sin cambios). */
   modo?: ModoLista;
-  /** Oculta el botón de acción (p. ej. cuando ya se está en la pantalla de cobro). */
-  ocultarAccion?: boolean;
+  /** Deshabilita el botón de acción (p. ej. mientras falta efectivo recibido en el cobro). */
+  deshabilitarAccion?: boolean;
+  /** Muestra estado de guardado en el botón de acción. */
+  cargandoAccion?: boolean;
 }
 
 const TITULO_POR_DEFECTO: Record<ModoLista, string> = {
@@ -281,7 +283,8 @@ export function PanelCarrito({
   textoAccion = TEXTO_ACCION_POR_DEFECTO[modo],
   textoVacio = TEXTO_VACIO_POR_DEFECTO,
   nota,
-  ocultarAccion = false,
+  deshabilitarAccion = false,
+  cargandoAccion = false,
 }: PanelCarritoProps) {
   const tono = TONO[modo];
   const autoconsumo = modo === 'autoconsumo';
@@ -316,10 +319,17 @@ export function PanelCarrito({
     <button
       type="button"
       onClick={onCobrar}
-      disabled={vacio}
-      className={`flex ${alto} min-w-[44px] items-center justify-center rounded-2xl border ${tono.boton} px-5 font-lz-display text-lg font-bold tracking-wide shadow-lz-soft transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-lz-border disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:active:scale-100`}
+      disabled={vacio || deshabilitarAccion || cargandoAccion}
+      aria-busy={cargandoAccion || undefined}
+      className={`flex ${alto} min-w-[44px] items-center justify-center gap-2 rounded-2xl border ${tono.boton} px-5 font-lz-display text-lg font-bold tracking-wide shadow-lz-soft transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-lz-border disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:active:scale-100`}
     >
-      {textoAccion}
+      {cargandoAccion && (
+        <span
+          aria-hidden="true"
+          className="h-5 w-5 animate-spin rounded-full border-2 border-lz-surface border-t-transparent"
+        />
+      )}
+      {cargandoAccion ? 'Guardando…' : textoAccion}
     </button>
   );
 
@@ -432,7 +442,7 @@ export function PanelCarrito({
     <div className={`flex shrink-0 flex-col gap-3 border-t ${tono.franja} p-4`}>
       {cajaTotal}
       {nota && <p className="text-xs font-semibold text-lz-charcoal-muted">{nota}</p>}
-      {!ocultarAccion && botonCobrar('h-16 w-full')}
+      {botonCobrar('h-16 w-full')}
     </div>
   );
 
@@ -531,7 +541,7 @@ export function PanelCarrito({
             {ICONO_EXPANDIR}
           </span>
         </button>
-        {!ocultarAccion && botonCobrar('h-12')}
+        {botonCobrar('h-12')}
       </div>
     </div>
   );

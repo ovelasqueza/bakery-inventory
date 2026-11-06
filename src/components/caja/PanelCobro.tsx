@@ -13,6 +13,13 @@ import type { MetodoPagoParam } from '@/lib/api/parametros';
 import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
 import { AvisoSinConexion } from './AvisoSinConexion';
 
+export type AccionConfirmarCobro = {
+  puedeConfirmar: boolean;
+  registrando: boolean;
+  textoBoton: string;
+  confirmar: () => void;
+};
+
 interface PanelCobroProps {
   abierto: boolean;
   /** Lo que se cobra: el Carrito de productos o la lista de valores de la Calculadora (Req 5.1). */
@@ -28,6 +35,8 @@ interface PanelCobroProps {
   abrirCajon: () => Promise<void>;
   /** Espacio libre al final del scroll, en px, para que el botón flotante no tape "Cobrar" (Req 4.6). */
   reservaInferior?: number;
+  /** Sincroniza el estado de confirmación con el botón "Cobrar" del panel derecho. */
+  onCambioConfirmacion?: (accion: AccionConfirmarCobro | null) => void;
 }
 
 type ErrorCobro = { tipo: 'sin_conexion' } | { tipo: 'mensaje'; texto: string } | null;
@@ -62,6 +71,7 @@ export function PanelCobro({
   onPreciosActualizados,
   abrirCajon,
   reservaInferior,
+  onCambioConfirmacion,
 }: PanelCobroProps) {
   const enProceso = useRef(false);
   const metodosRef = useRef(metodos);
@@ -165,6 +175,24 @@ export function PanelCobro({
       setRegistrando(false);
     }
   }, [abrirCajon, pedido, clave, metodo, onPreciosActualizados, onRegistrada, onTurnoCerrado, recibido, renovar, total, turnoId]);
+
+  const textoBoton = esEfectivo && completo && cambio > 0 ? `Cobrar · Cambio ${formatCurrency(cambio)}` : 'Cobrar';
+
+  useEffect(() => {
+    if (!abierto) {
+      onCambioConfirmacion?.(null);
+      return;
+    }
+    onCambioConfirmacion?.({
+      puedeConfirmar,
+      registrando,
+      textoBoton,
+      confirmar: () => void confirmar(),
+    });
+    return () => {
+      onCambioConfirmacion?.(null);
+    };
+  }, [abierto, confirmar, onCambioConfirmacion, puedeConfirmar, registrando, textoBoton]);
 
   const volver = useCallback(() => {
     if (enProceso.current) return;
@@ -408,13 +436,6 @@ export function PanelCobro({
           </div>
 
           {errorVista}
-
-          <BotonCobrar
-            habilitado={puedeConfirmar}
-            registrando={registrando}
-            onClick={() => void confirmar()}
-            texto={completo ? `Cobrar · Cambio ${formatCurrency(cambio)}` : 'Toque los billetes o escriba lo que entrega el cliente'}
-          />
         </>
       ) : metodo ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
@@ -426,14 +447,6 @@ export function PanelCobro({
             Cobre con {metodo.nombre} y confirme cuando vea el pago.
           </p>
           {errorVista}
-          <div className="w-full max-w-md">
-            <BotonCobrar
-              habilitado={puedeConfirmar}
-              registrando={registrando}
-              onClick={() => void confirmar()}
-              texto={`Confirmar pago ${formatCurrency(total)}`}
-            />
-          </div>
         </div>
       ) : null}
     </section>
@@ -458,33 +471,6 @@ function Dato({
         {formatCurrency(valor)}
       </p>
     </div>
-  );
-}
-
-function BotonCobrar({
-  habilitado,
-  registrando,
-  onClick,
-  texto,
-}: {
-  habilitado: boolean;
-  registrando: boolean;
-  onClick: () => void;
-  texto: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!habilitado}
-      aria-busy={registrando || undefined}
-      className="flex min-h-[64px] w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-lz-sage px-6 font-lz-display text-xl font-bold text-lz-surface shadow-lz-float transition hover:bg-lz-sage-dark active:scale-[0.99] disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:shadow-none"
-    >
-      {registrando && (
-        <span aria-hidden="true" className="h-6 w-6 animate-spin rounded-full border-[3px] border-lz-surface border-t-transparent" />
-      )}
-      {registrando ? 'Guardando…' : texto}
-    </button>
   );
 }
 

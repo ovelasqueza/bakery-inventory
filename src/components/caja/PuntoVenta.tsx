@@ -39,7 +39,7 @@ import { EstadoVacioCaja } from '@/components/caja/EstadoVacioCaja';
 import { ListaAutoconsumosTurno } from '@/components/caja/ListaAutoconsumosTurno';
 import { ListaVentasTurno } from '@/components/caja/ListaVentasTurno';
 import { PanelCarrito } from '@/components/caja/PanelCarrito';
-import { PanelCobro } from '@/components/caja/PanelCobro';
+import { PanelCobro, type AccionConfirmarCobro } from '@/components/caja/PanelCobro';
 import { PanelGastos } from '@/components/caja/PanelGastos';
 import { PanelValores } from '@/components/caja/PanelValores';
 import { ResultadoCierre } from '@/components/caja/ResultadoCierre';
@@ -166,6 +166,7 @@ export function PuntoVenta() {
   const [panelExpandido, setPanelExpandido] = useState(false);
   const [dialogoAutoconsumo, setDialogoAutoconsumo] = useState(false);
   const [listaAutoconsumos, setListaAutoconsumos] = useState(false);
+  const [confirmacionCobro, setConfirmacionCobro] = useState<AccionConfirmarCobro | null>(null);
 
   // ---------------------------------------------------------------------------
   // Pedido_Productos y Seleccion_Autoconsumo: dos Carritos separados (Req 8.5).
@@ -601,6 +602,7 @@ export function PuntoVenta() {
         onPreciosActualizados={alPreciosActualizados}
         abrirCajon={abrirCajonCobro}
         reservaInferior={reservaInferior}
+        onCambioConfirmacion={setConfirmacionCobro}
       />
     );
   } else if (vista === 'calculadora') {
@@ -669,16 +671,19 @@ export function PuntoVenta() {
       />
     );
   } else {
+    const enCobro = vista === 'cobrando';
     panelDerecho = (
       <PanelCarrito
         key="pedido"
         carrito={carrito}
         layout={layout}
         despachar={despachar}
-        onCobrar={cobrar}
+        onCobrar={enCobro ? () => confirmacionCobro?.confirmar() : cobrar}
         expandido={panelExpandido}
         onExpandir={setPanelExpandido}
-        ocultarAccion={vista === 'cobrando'}
+        textoAccion={enCobro && confirmacionCobro ? confirmacionCobro.textoBoton : undefined}
+        deshabilitarAccion={enCobro && (!confirmacionCobro || !confirmacionCobro.puedeConfirmar)}
+        cargandoAccion={enCobro && Boolean(confirmacionCobro?.registrando)}
       />
     );
   }
