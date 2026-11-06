@@ -6,29 +6,37 @@
 import { validarEnteroEnRango } from './validacion';
 import { firmaCarrito, totalCarrito, type Carrito } from './carrito';
 
-/** Lo que se cobra: un Carrito de productos o una lista de valores de la calculadora (Req 5.1). */
+/** Lo que se cobra: un Carrito de productos (con valores de calculadora opcionales) o una lista de valores de la calculadora (Req 5.1). */
 export type PedidoCobro =
-  | { tipo: 'productos'; carrito: Carrito }
+  | { tipo: 'productos'; carrito: Carrito; valores?: number[] }
   | { tipo: 'valor'; valores: number[] };
 
-/** Total a cobrar: `totalCarrito` para productos o la suma de los valores (Req 5.1). */
+/** Total a cobrar: `totalCarrito` más la suma de los valores de calculadora si los hay (Req 5.1). */
 export function totalPedido(p: PedidoCobro): number {
-  if (p.tipo === 'productos') return totalCarrito(p.carrito);
-  return p.valores.reduce((s, v) => s + v, 0);
+  const sumaValores = (p.valores ?? []).reduce((s, v) => s + v, 0);
+  if (p.tipo === 'productos') return totalCarrito(p.carrito) + sumaValores;
+  return sumaValores;
 }
 
-/** Verdadero si no hay líneas en el Carrito o no hay valores. */
+/** Verdadero si no hay líneas en el Carrito ni valores en la lista. */
 export function pedidoVacio(p: PedidoCobro): boolean {
-  return p.tipo === 'productos' ? p.carrito.length === 0 : p.valores.length === 0;
+  if (p.tipo === 'productos') {
+    return p.carrito.length === 0 && (p.valores?.length ?? 0) === 0;
+  }
+  return p.valores.length === 0;
 }
 
 /**
  * Firma del pedido para reutilizar la clave de idempotencia mientras no cambie (Req 5.4).
- * Productos: la misma `firmaCarrito` (un arreglo JSON, empieza por "[").
+ * Productos: `firmaCarrito` (y si hay valores combinados, se concatena `|valor:[...]`).
  * Valor: "valor:" + los valores en su orden, así nunca coincide con la firma de un Carrito.
  */
 export function firmaPedido(p: PedidoCobro): string {
-  if (p.tipo === 'productos') return firmaCarrito(p.carrito);
+  if (p.tipo === 'productos') {
+    const base = firmaCarrito(p.carrito);
+    if (!p.valores || p.valores.length === 0) return base;
+    return `${base}|valor:${JSON.stringify(p.valores)}`;
+  }
   return `valor:${JSON.stringify(p.valores)}`;
 }
 

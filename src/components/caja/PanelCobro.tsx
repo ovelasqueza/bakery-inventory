@@ -121,13 +121,15 @@ export function PanelCobro({
         metodoPagoId: metodo.id,
         recibido: metodo.esEfectivo ? recibido : null,
       };
-      const venta =
-        pedido.tipo === 'productos'
-          ? await registrarVenta({
-              ...base,
-              lineas: pedido.carrito.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad, precio: l.precio })),
-            })
-          : await registrarVentaValor({ ...base, valores: pedido.valores });
+      const valores = pedido.valores ?? [];
+      const tieneProductos = pedido.tipo === 'productos' && pedido.carrito.length > 0;
+      const venta = tieneProductos
+        ? await registrarVenta({
+            ...base,
+            lineas: pedido.carrito.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad, precio: l.precio })),
+            valores,
+          })
+        : await registrarVentaValor({ ...base, valores });
       if (venta.esEfectivo) {
         // El cajón no frena la confirmación; su aviso lo maneja quien lo abre.
         void abrirCajon().catch(() => undefined);
@@ -136,7 +138,7 @@ export function PanelCobro({
       onRegistrada(venta, venta.esEfectivo);
     } catch (e) {
       const codigo = e instanceof ErrorApp ? e.codigo : 'DESCONOCIDO';
-      const esProductos = pedido.tipo === 'productos';
+      const esProductos = pedido.tipo === 'productos' && pedido.carrito.length > 0;
       switch (codigo) {
         case 'SIN_CONEXION':
           setError({ tipo: 'sin_conexion' });

@@ -41,7 +41,6 @@ import { ListaVentasTurno } from '@/components/caja/ListaVentasTurno';
 import { PanelCarrito } from '@/components/caja/PanelCarrito';
 import { PanelCobro, type AccionConfirmarCobro } from '@/components/caja/PanelCobro';
 import { PanelGastos } from '@/components/caja/PanelGastos';
-import { PanelValores } from '@/components/caja/PanelValores';
 import { ResultadoCierre } from '@/components/caja/ResultadoCierre';
 import { useBusquedaDiferida } from '@/hooks/caja/useBusquedaDiferida';
 import { useCajon } from '@/hooks/caja/useCajon';
@@ -179,7 +178,23 @@ export function PuntoVenta() {
     () => new Map(seleccion.map((l) => [l.productoId, l.cantidad] as const)),
     [seleccion]
   );
-  const pedidoProductos = useMemo<PedidoCobro>(() => ({ tipo: 'productos', carrito }), [carrito]);
+  const [calculadora, setCalculadora] = useState<EstadoCalculadora>(CALCULADORA_INICIAL);
+  const calculadoraRef = useRef<EstadoCalculadora>(CALCULADORA_INICIAL);
+
+  const fijarCalculadora = useCallback((e: EstadoCalculadora) => {
+    if (e === calculadoraRef.current) return;
+    calculadoraRef.current = e;
+    setCalculadora(e);
+  }, []);
+
+  const pedidoProductos = useMemo<PedidoCobro>(
+    () => ({
+      tipo: 'productos',
+      carrito,
+      valores: calculadora.valores.map((v) => v.valor),
+    }),
+    [carrito, calculadora.valores]
+  );
 
   const agregarA = useCallback(
     (despacho: (a: AccionCarrito) => ResultadoCarrito, p: ProductoCaja) => {
@@ -193,18 +208,6 @@ export function PuntoVenta() {
     (p: ProductoCaja) => agregarA(despacharSeleccion, p),
     [agregarA, despacharSeleccion]
   );
-
-  // ---------------------------------------------------------------------------
-  // Calculadora: Valor_Digitado y Lista_Valores, aparte del Pedido_Productos (Req 4.7, 4.8).
-  // ---------------------------------------------------------------------------
-  const [calculadora, setCalculadora] = useState<EstadoCalculadora>(CALCULADORA_INICIAL);
-  const calculadoraRef = useRef<EstadoCalculadora>(CALCULADORA_INICIAL);
-
-  const fijarCalculadora = useCallback((e: EstadoCalculadora) => {
-    if (e === calculadoraRef.current) return;
-    calculadoraRef.current = e;
-    setCalculadora(e);
-  }, []);
 
   // Metodo_Escogido de la Calculadora: se conserva mientras siga activo; si no, el de por
   // defecto (Req 5.2, 5.4).
@@ -327,18 +330,20 @@ export function PuntoVenta() {
   const alRegistrada = useCallback(
     (venta: VentaRegistrada) => {
       despachar({ tipo: 'vaciar' });
+      fijarCalculadora(reducirCalculadora(calculadoraRef.current, { tipo: 'vaciar' }).estado);
       setVista('vendiendo');
       setConfirmacion({ total: venta.total, cambio: venta.cambio });
     },
-    [despachar]
+    [despachar, fijarCalculadora]
   );
 
   const alCerrado = useCallback(
     (c: Cierre) => {
       despachar({ tipo: 'vaciar' });
+      fijarCalculadora(reducirCalculadora(calculadoraRef.current, { tipo: 'vaciar' }).estado);
       if (turno) setCierre({ cierre: c, turnoId: turno.id });
     },
-    [despachar, turno]
+    [despachar, fijarCalculadora, turno]
   );
 
   const alContinuarCierre = useCallback(() => {
@@ -442,14 +447,44 @@ export function PuntoVenta() {
   }, []);
 
   const cobrar = useCallback(() => {
-    if (carritoRef.current.length === 0) return;
-    setVista('cobrando');
-  }, [carritoRef]);
+    const tieneProductos = carritoRef.current.length > 0;
+    const calc = calculadoraRef.current;
+
+    if (tieneProductos) {
+      if (calc.digitado > 0) {
+        const r = valoresParaCobrar(calc);
+        if (!r.ok) {
+          showToast(textoAvisoCalculadora(r.aviso), 'warning');
+          return;
+        }
+        fijarCalculadora(r.estado);
+      }
+      setVista('cobrando');
+      return;
+    }
+
+    if (calc.valores.length > 0 || calc.digitado > 0) {
+      cobrarValor();
+    }
+  }, [carritoRef, cobrarValor, fijarCalculadora, showToast]);
+
+  const quitarValorCalculadora = useCallback(
+    (id: number) => {
+      despacharCalculadora({ tipo: 'quitar', id });
+    },
+    [despacharCalculadora]
+  );
+
+  const vaciarValoresCalculadora = useCallback(() => {
+    despacharCalculadora({ tipo: 'vaciar' });
+  }, [despacharCalculadora]);
 
   // Si el pedido queda vacío durante el cobro, se vuelve a Vendiendo.
   useEffect(() => {
-    if (vista === 'cobrando' && carrito.length === 0) setVista('vendiendo');
-  }, [vista, carrito.length]);
+    if (vista === 'cobrando' && carrito.length === 0 && calculadora.valores.length === 0) {
+      setVista('vendiendo');
+    }
+  }, [vista, carrito.length, calculadora.valores.length]);
 
   // ---------------------------------------------------------------------------
   // Autoconsumo
@@ -610,7 +645,7 @@ export function PuntoVenta() {
       <CalculadoraVenta
         estado={calculadora}
         despachar={despacharCalculadora}
-        onCobrar={cobrarValor}
+        onCobrar={cobrar}
         layout={layout}
         reservaInferior={reservaInferior}
         registrando={registrandoValor}
@@ -639,24 +674,7 @@ export function PuntoVenta() {
   }
 
   let panelDerecho: ReactNode;
-  if (enCalculadora) {
-    panelDerecho = (
-      <PanelValores
-        estado={calculadora}
-        layout={layout}
-        despachar={despacharCalculadora}
-        onCobrar={cobrarValor}
-        metodos={metodosPago}
-        metodoId={metodoValorVigenteId}
-        onMetodo={escogerMetodoValor}
-        registrando={registrandoValor}
-        error={cobro.error}
-        onReintentar={reintentarValor}
-        expandido={panelExpandido}
-        onExpandir={setPanelExpandido}
-      />
-    );
-  } else if (enAutoconsumo) {
+  if (enAutoconsumo) {
     panelDerecho = (
       <PanelCarrito
         key="autoconsumo"
@@ -672,6 +690,7 @@ export function PuntoVenta() {
     );
   } else {
     const enCobro = vista === 'cobrando';
+    const soloCalculadora = !enCobro && carrito.length === 0 && (enCalculadora || calculadora.valores.length > 0);
     panelDerecho = (
       <PanelCarrito
         key="pedido"
@@ -682,8 +701,27 @@ export function PuntoVenta() {
         expandido={panelExpandido}
         onExpandir={setPanelExpandido}
         textoAccion={enCobro && confirmacionCobro ? confirmacionCobro.textoBoton : undefined}
-        deshabilitarAccion={enCobro && (!confirmacionCobro || !confirmacionCobro.puedeConfirmar)}
-        cargandoAccion={enCobro && Boolean(confirmacionCobro?.registrando)}
+        deshabilitarAccion={
+          enCobro
+            ? !confirmacionCobro || !confirmacionCobro.puedeConfirmar
+            : soloCalculadora && metodoValorVigenteId === null
+        }
+        cargandoAccion={enCobro ? Boolean(confirmacionCobro?.registrando) : registrandoValor}
+        valores={calculadora.valores}
+        digitadoCalculadora={calculadora.digitado}
+        onQuitarValor={quitarValorCalculadora}
+        onVaciarValores={vaciarValoresCalculadora}
+        mostrarSelectorMetodo={soloCalculadora}
+        metodosPago={metodosPago}
+        metodoPagoId={metodoValorVigenteId}
+        onMetodoPago={escogerMetodoValor}
+        errorCobroDirecto={soloCalculadora ? cobro.error : null}
+        onReintentarCobroDirecto={reintentarValor}
+        textoVacio={
+          enCalculadora
+            ? 'Escriba un valor y toque "Agregar", o escoja productos.'
+            : 'Toca un producto o usa la calculadora para agregar al pedido.'
+        }
       />
     );
   }

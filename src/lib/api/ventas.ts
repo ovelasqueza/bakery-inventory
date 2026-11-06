@@ -31,6 +31,8 @@ export type EntradaVenta = {
   turnoId: string;
   metodoPagoId: string;
   lineas: LineaVenta[];
+  /** Valores adicionales de la calculadora combinados en el mismo pedido. */
+  valores?: number[];
   /** Efectivo recibido; null si el método no es efectivo. */
   recibido: number | null;
 };
@@ -262,17 +264,80 @@ export async function obtenerCatalogoCaja(): Promise<CatalogoCaja> {
   };
 }
 
+/** Deriva un segundo UUID determinístico a partir de `uuid` para idempotencia del respaldo combinado. */
+function derivarUuidSecundario(uuid: string): string {
+  const ultimo = uuid.slice(-1).toLowerCase();
+  const reemplazo = ultimo === '0' ? '1' : '0';
+  return `${uuid.slice(0, -1)}${reemplazo}`;
+}
+
 /** Registra la venta de forma atómica e idempotente por `clave` (Req 6.8, 6.12). */
 export async function registrarVenta(entrada: EntradaVenta): Promise<VentaRegistrada> {
+  const valores = entrada.valores ?? [];
+  const lineasRpc = entrada.lineas.map((l) => ({
+    producto_id: l.productoId,
+    cantidad: l.cantidad,
+    precio: l.precio,
+  }));
+
+  if (valores.length > 0) {
+    try {
+      const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_combinada', {
+        p_clave: entrada.clave,
+        p_turno: entrada.turnoId,
+        p_metodo: entrada.metodoPagoId,
+        p_lineas: lineasRpc,
+        p_valores: valores,
+        p_recibido: entrada.recibido,
+      });
+      return mapearVentaRegistrada(r);
+    } catch (e) {
+      // Si la migración SQL de registrar_venta_combinada aún no se ha corrido en Supabase,
+      // respaldamos registrando productos y valores con claves idempotentes derivadas.
+      if (!(e instanceof ErrorApp) || e.codigo !== 'DESCONOCIDO') {
+        throw e;
+      }
+      const totalProductos = entrada.lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
+      const totalValores = valores.reduce((s, v) => s + v, 0);
+      const totalGeneral = totalProductos + totalValores;
+      const cambioTotal =
+        entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
+      const recibidoProductos =
+        entrada.recibido !== null ? totalProductos + cambioTotal : null;
+      const recibidoValores = entrada.recibido !== null ? totalValores : null;
+
+      const rProd = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+        p_clave: entrada.clave,
+        p_turno: entrada.turnoId,
+        p_metodo: entrada.metodoPagoId,
+        p_lineas: lineasRpc,
+        p_recibido: recibidoProductos,
+      });
+      const rVal = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_valor', {
+        p_clave: derivarUuidSecundario(entrada.clave),
+        p_turno: entrada.turnoId,
+        p_metodo: entrada.metodoPagoId,
+        p_valores: valores,
+        p_recibido: recibidoValores,
+      });
+      const total = rProd.total + rVal.total;
+      const cambio = rProd.cambio + rVal.cambio;
+      return {
+        ventaId: rProd.venta_id,
+        total,
+        efectivoRecibido: total + cambio,
+        cambio,
+        esEfectivo: rProd.es_efectivo,
+        creadoEn: rProd.creado_en,
+      };
+    }
+  }
+
   const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
     p_clave: entrada.clave,
     p_turno: entrada.turnoId,
     p_metodo: entrada.metodoPagoId,
-    p_lineas: entrada.lineas.map((l) => ({
-      producto_id: l.productoId,
-      cantidad: l.cantidad,
-      precio: l.precio,
-    })),
+    p_lineas: lineasRpc,
     p_recibido: entrada.recibido,
   });
   return mapearVentaRegistrada(r);

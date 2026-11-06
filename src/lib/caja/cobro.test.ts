@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   datosCobroDirecto,
   firmaCobroDirecto,
+  firmaPedido,
   metodoPorDefecto,
   metodoVigente,
+  pedidoVacio,
   RECIBIDO_MAX,
+  totalPedido,
   type MetodoCobro,
 } from './cobro';
 
@@ -80,5 +83,28 @@ describe('firmaCobroDirecto', () => {
     expect(firmaCobroDirecto([2000, 1000], 'efectivo')).not.toBe(base);
     expect(firmaCobroDirecto([1000, 2000], 'nequi')).not.toBe(base);
     expect(firmaCobroDirecto([1000], 'efectivo')).not.toBe(base);
+  });
+});
+
+describe('PedidoCobro combinado (productos + calculadora)', () => {
+  const linea = { productoId: 'p1', nombre: 'Pan', precio: 2500, cantidad: 2 };
+
+  it('suma productos y valores de calculadora en totalPedido', () => {
+    expect(totalPedido({ tipo: 'productos', carrito: [linea] })).toBe(5000);
+    expect(totalPedido({ tipo: 'productos', carrito: [linea], valores: [1500, 2000] })).toBe(8500);
+    expect(totalPedido({ tipo: 'productos', carrito: [], valores: [3000] })).toBe(3000);
+  });
+
+  it('pedidoVacio es falso si hay productos o valores', () => {
+    expect(pedidoVacio({ tipo: 'productos', carrito: [], valores: [] })).toBe(true);
+    expect(pedidoVacio({ tipo: 'productos', carrito: [linea], valores: [] })).toBe(false);
+    expect(pedidoVacio({ tipo: 'productos', carrito: [], valores: [1000] })).toBe(false);
+  });
+
+  it('firmaPedido distingue pedidos con y sin valores adicionales', () => {
+    const soloProd = firmaPedido({ tipo: 'productos', carrito: [linea] });
+    const combinado = firmaPedido({ tipo: 'productos', carrito: [linea], valores: [1000] });
+    expect(soloProd).not.toBe(combinado);
+    expect(firmaPedido({ tipo: 'productos', carrito: [linea], valores: [] })).toBe(soloProd);
   });
 });

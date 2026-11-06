@@ -5,7 +5,9 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import type { MetodoPagoParam } from '@/lib/api/parametros';
 import { MEDIDAS, type LayoutCaja } from '@/lib/caja/layout';
+import { totalValores, type ValorLista } from '@/lib/caja/calculadora';
 import {
   CANTIDAD_MAX,
   articulosCarrito,
@@ -17,11 +19,15 @@ import {
   type LineaCarrito,
   type ResultadoCarrito,
 } from '@/lib/caja/carrito';
+import { AvisoSinConexion } from './AvisoSinConexion';
+import type { ErrorCobroDirecto } from './PanelValores';
 import type { ModoLista } from './TarjetaProducto';
 
 const MENSAJE_CANTIDAD_INVALIDA = `La cantidad debe ser un entero entre 1 y ${CANTIDAD_MAX}`;
 const MENSAJE_CANTIDAD_MAXIMA = `Cantidad máxima: ${CANTIDAD_MAX}`;
 const DURACION_AVISO_MS = 3000;
+const SIN_VALORES: ValorLista[] = [];
+const SIN_METODOS: MetodoPagoParam[] = [];
 
 interface PanelCarritoProps {
   carrito: Carrito;
@@ -46,6 +52,21 @@ interface PanelCarritoProps {
   deshabilitarAccion?: boolean;
   /** Muestra estado de guardado en el botón de acción. */
   cargandoAccion?: boolean;
+  /** Valores agregados desde la calculadora al mismo pedido. */
+  valores?: ValorLista[];
+  /** Valor digitado pendiente en el visor de la calculadora. */
+  digitadoCalculadora?: number;
+  /** Quita un valor de la calculadora del pedido. */
+  onQuitarValor?: (id: number) => void;
+  /** Vacía también los valores y el digitado de la calculadora al vaciar el pedido. */
+  onVaciarValores?: () => void;
+  /** Muestra el selector de método de pago para cobro directo (cuando solo hay calculadora). */
+  mostrarSelectorMetodo?: boolean;
+  metodosPago?: MetodoPagoParam[];
+  metodoPagoId?: string | null;
+  onMetodoPago?: (id: string) => void;
+  errorCobroDirecto?: ErrorCobroDirecto;
+  onReintentarCobroDirecto?: () => void;
 }
 
 const TITULO_POR_DEFECTO: Record<ModoLista, string> = {
@@ -95,6 +116,20 @@ type Aviso = { texto: string; id: number };
 
 function textoArticulos(n: number) {
   return `${n} ${n === 1 ? 'artículo' : 'artículos'}`;
+}
+
+function textoValores(n: number) {
+  return `${n} ${n === 1 ? 'valor' : 'valores'}`;
+}
+
+function textoResumenPedido(articulos: number, cantidadValores: number) {
+  if (articulos > 0 && cantidadValores > 0) {
+    return `${textoArticulos(articulos)} · ${textoValores(cantidadValores)}`;
+  }
+  if (articulos === 0 && cantidadValores > 0) {
+    return textoValores(cantidadValores);
+  }
+  return textoArticulos(articulos);
 }
 
 function Icono({ children, className = 'h-5 w-5' }: { children: ReactNode; className?: string }) {
@@ -271,6 +306,46 @@ function LineaPedido({
   );
 }
 
+/** Una línea de valor agregada desde la calculadora dentro del Pedido. */
+function LineaValorPedido({
+  valor,
+  numero,
+  deshabilitado,
+  onQuitar,
+}: {
+  valor: ValorLista;
+  numero: number;
+  deshabilitado: boolean;
+  onQuitar?: () => void;
+}) {
+  const texto = formatCurrency(valor.valor);
+  return (
+    <li className="flex items-center justify-between gap-2 py-3">
+      <div className="min-w-0 flex-1">
+        <h4 className="truncate text-sm font-bold text-lz-charcoal">
+          Venta por valor <span className="text-xs font-semibold text-lz-charcoal-muted">#{numero}</span>
+        </h4>
+        <p className="text-xs text-lz-charcoal-muted">Calculadora</p>
+      </div>
+      <span className="shrink-0 font-lz-display text-base font-bold text-lz-charcoal tabular-nums">
+        {texto}
+      </span>
+      {onQuitar && (
+        <button
+          type="button"
+          onClick={onQuitar}
+          disabled={deshabilitado}
+          aria-label={`Quitar valor ${numero}: ${texto}`}
+          title="Quitar valor"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-lz-charcoal-muted transition-colors hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {ICONO_PAPELERA}
+        </button>
+      )}
+    </li>
+  );
+}
+
 export function PanelCarrito({
   carrito,
   layout,
@@ -285,6 +360,16 @@ export function PanelCarrito({
   nota,
   deshabilitarAccion = false,
   cargandoAccion = false,
+  valores = SIN_VALORES,
+  digitadoCalculadora = 0,
+  onQuitarValor,
+  onVaciarValores,
+  mostrarSelectorMetodo = false,
+  metodosPago = SIN_METODOS,
+  metodoPagoId = null,
+  onMetodoPago,
+  errorCobroDirecto = null,
+  onReintentarCobroDirecto,
 }: PanelCarritoProps) {
   const tono = TONO[modo];
   const autoconsumo = modo === 'autoconsumo';
@@ -292,10 +377,20 @@ export function PanelCarrito({
   const [aviso, setAviso] = useState<Aviso | null>(null);
   const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
 
-  const total = totalCarrito(carrito);
+  const sumaValores = autoconsumo ? 0 : totalValores(valores);
+  const total = totalCarrito(carrito) + sumaValores;
   const articulos = articulosCarrito(carrito);
-  const vacio = carrito.length === 0;
+  const cantidadValores = autoconsumo ? 0 : valores.length;
+  const sinLineas = carrito.length === 0 && cantidadValores === 0;
+  const nadaQueVaciar = sinLineas && (autoconsumo || digitadoCalculadora === 0);
+  const sinAccion = sinLineas && (autoconsumo || digitadoCalculadora === 0);
   const totalTexto = formatCurrency(total);
+  const resumenCantidad = autoconsumo
+    ? textoArticulos(articulos)
+    : textoResumenPedido(articulos, cantidadValores);
+
+  const metodosActivos = metodosPago.filter((m) => m.activo);
+  const metodoSeleccionado = metodosActivos.find((m) => m.id === metodoPagoId) ?? null;
 
   useEffect(() => {
     if (!aviso) return;
@@ -305,13 +400,14 @@ export function PanelCarrito({
 
   // Sin líneas no hay nada que confirmar.
   useEffect(() => {
-    if (vacio) setConfirmandoVaciar(false);
-  }, [vacio]);
+    if (nadaQueVaciar || cargandoAccion) setConfirmandoVaciar(false);
+  }, [nadaQueVaciar, cargandoAccion]);
 
   const mostrarAviso = (texto: string) => setAviso({ texto, id: Date.now() });
 
   const vaciar = () => {
     despachar({ tipo: 'vaciar' });
+    onVaciarValores?.();
     setConfirmandoVaciar(false);
   };
 
@@ -319,7 +415,7 @@ export function PanelCarrito({
     <button
       type="button"
       onClick={onCobrar}
-      disabled={vacio || deshabilitarAccion || cargandoAccion}
+      disabled={sinAccion || deshabilitarAccion || cargandoAccion}
       aria-busy={cargandoAccion || undefined}
       className={`flex ${alto} min-w-[44px] items-center justify-center gap-2 rounded-2xl border ${tono.boton} px-5 font-lz-display text-lg font-bold tracking-wide shadow-lz-soft transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-lz-border disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:active:scale-100`}
     >
@@ -346,6 +442,53 @@ export function PanelCarrito({
     </div>
   );
 
+  const selectorMetodo = mostrarSelectorMetodo ? (
+    <div className="shrink-0 border-b border-lz-border bg-lz-surface px-4 py-3">
+      <p
+        id="selector-metodo-pedido"
+        className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted"
+      >
+        Método de pago (cobro directo)
+      </p>
+      {metodosActivos.length === 0 ? (
+        <p className="text-sm font-semibold text-lz-danger">No hay métodos de pago activos.</p>
+      ) : (
+        <div role="group" aria-labelledby="selector-metodo-pedido" className="flex flex-wrap gap-2">
+          {metodosActivos.map((m) => {
+            const escogido = m.id === metodoSeleccionado?.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onMetodoPago?.(m.id)}
+                disabled={cargandoAccion}
+                aria-pressed={escogido}
+                className={`min-h-[44px] min-w-[44px] rounded-xl border px-4 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  escogido
+                    ? 'border-lz-sage bg-lz-sage text-lz-surface'
+                    : 'border-lz-border bg-lz-surface text-lz-charcoal hover:bg-lz-sage-light hover:text-lz-sage'
+                }`}
+              >
+                {m.nombre}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const avisoErrorDirecto = !errorCobroDirecto ? null : errorCobroDirecto.tipo === 'sin_conexion' ? (
+    <AvisoSinConexion onReintentar={() => onReintentarCobroDirecto?.()} reintentando={cargandoAccion} />
+  ) : (
+    <p
+      role="alert"
+      className="rounded-xl border border-lz-danger-border bg-lz-danger-surface px-3 py-2 text-sm font-semibold text-lz-danger"
+    >
+      {errorCobroDirecto.texto}
+    </p>
+  );
+
   const encabezado = (contraer?: ReactNode) => (
     <div className={`flex shrink-0 flex-col gap-2 border-b ${tono.franja} px-4 py-3`}>
       <div className="flex items-center justify-between gap-2">
@@ -354,7 +497,7 @@ export function PanelCarrito({
           <button
             type="button"
             onClick={() => setConfirmandoVaciar(true)}
-            disabled={vacio || confirmandoVaciar}
+            disabled={nadaQueVaciar || confirmandoVaciar || cargandoAccion}
             className="inline-flex h-11 min-w-[44px] items-center justify-center gap-1.5 rounded-xl border border-lz-border bg-lz-surface px-3 text-sm font-semibold text-lz-charcoal transition-colors hover:border-lz-danger-border hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:text-lz-charcoal-muted disabled:hover:border-lz-border disabled:hover:bg-lz-surface"
           >
             {ICONO_PAPELERA}
@@ -364,7 +507,7 @@ export function PanelCarrito({
         </div>
       </div>
 
-      {confirmandoVaciar && (
+      {confirmandoVaciar && !cargandoAccion && (
         <div
           role="alertdialog"
           aria-labelledby="confirmar-vaciar-titulo"
@@ -396,7 +539,7 @@ export function PanelCarrito({
 
   const lista = (
     <div className="min-h-0 flex-1 overflow-y-auto px-4">
-      {vacio ? (
+      {sinLineas ? (
         <p className="py-10 text-center text-sm font-semibold text-lz-charcoal-muted">
           {textoVacio}
         </p>
@@ -411,6 +554,16 @@ export function PanelCarrito({
               sinPrecio={autoconsumo}
             />
           ))}
+          {!autoconsumo &&
+            valores.map((v, i) => (
+              <LineaValorPedido
+                key={`valor-${v.id}`}
+                valor={v}
+                numero={i + 1}
+                deshabilitado={cargandoAccion}
+                onQuitar={onQuitarValor ? () => onQuitarValor(v.id) : undefined}
+              />
+            ))}
         </ul>
       )}
     </div>
@@ -430,7 +583,7 @@ export function PanelCarrito({
     <div className="flex items-center justify-between rounded-2xl border border-lz-border bg-lz-surface p-3.5 shadow-lz-soft">
       <div className="flex flex-col">
         <span className="text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">Total</span>
-        <span className="text-xs font-semibold text-lz-amber">{textoArticulos(articulos)}</span>
+        <span className="text-xs font-semibold text-lz-amber">{resumenCantidad}</span>
       </div>
       <span className="font-lz-display text-3xl font-extrabold tracking-tight text-lz-sage-dark tabular-nums">
         {totalTexto}
@@ -441,7 +594,13 @@ export function PanelCarrito({
   const pie = (
     <div className={`flex shrink-0 flex-col gap-3 border-t ${tono.franja} p-4`}>
       {cajaTotal}
+      {!autoconsumo && !cargandoAccion && digitadoCalculadora > 0 && (
+        <p className="text-center text-xs font-semibold text-lz-charcoal-muted">
+          Al cobrar se suma también {formatCurrency(digitadoCalculadora)} digitado.
+        </p>
+      )}
       {nota && <p className="text-xs font-semibold text-lz-charcoal-muted">{nota}</p>}
+      {avisoErrorDirecto}
       {botonCobrar('h-16 w-full')}
     </div>
   );
@@ -455,6 +614,7 @@ export function PanelCarrito({
         style={{ width: layout.anchoCarrito }}
       >
         {encabezado()}
+        {selectorMetodo}
         {regionAviso}
         {lista}
         {pie}
@@ -487,6 +647,7 @@ export function PanelCarrito({
               Contraer
             </button>
           )}
+          {selectorMetodo}
           {regionAviso}
           {lista}
           {pie}
@@ -502,6 +663,7 @@ export function PanelCarrito({
       aria-label={titulo}
       role="region"
     >
+      {avisoErrorDirecto && <div className="px-3 pt-3">{avisoErrorDirecto}</div>}
       {aviso && (
         <p
           role="status"
@@ -517,8 +679,8 @@ export function PanelCarrito({
           onClick={() => onExpandir(true)}
           aria-label={
             autoconsumo
-              ? `Ver ${tituloMinusculas}: ${textoArticulos(articulos)}`
-              : `Ver ${tituloMinusculas}: ${textoArticulos(articulos)}, total ${totalTexto}`
+              ? `Ver ${tituloMinusculas}: ${resumenCantidad}`
+              : `Ver ${tituloMinusculas}: ${resumenCantidad}, total ${totalTexto}`
           }
           className={`flex h-12 min-w-0 flex-1 items-center gap-3 rounded-xl px-2 text-left transition-colors ${tono.hoverBarra}`}
         >
@@ -528,12 +690,19 @@ export function PanelCarrito({
                 {titulo}
               </span>
             ) : (
-              <span className="truncate font-lz-display text-xl font-extrabold leading-tight text-lz-sage-dark tabular-nums">
-                {totalTexto}
+              <span className="flex min-w-0 items-baseline gap-2">
+                <span className="truncate font-lz-display text-xl font-extrabold leading-tight text-lz-sage-dark tabular-nums">
+                  {totalTexto}
+                </span>
+                {mostrarSelectorMetodo && metodoSeleccionado && (
+                  <span className="shrink-0 rounded-md bg-lz-sage-light px-1.5 text-xs font-bold text-lz-sage">
+                    {metodoSeleccionado.nombre}
+                  </span>
+                )}
               </span>
             )}
             <span className="truncate text-xs font-semibold text-lz-charcoal-muted">
-              {textoArticulos(articulos)}
+              {resumenCantidad}
             </span>
           </span>
           <span className={`ml-auto flex shrink-0 items-center gap-1 text-sm font-semibold ${tono.textoVer}`}>
