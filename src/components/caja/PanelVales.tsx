@@ -249,14 +249,9 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
     >
       <div className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
         <header className="flex items-center justify-between gap-3 border-b border-lz-border bg-lz-surface px-5 py-3">
-          <div className="flex min-w-0 flex-col">
-            <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
-              Vales de empleados
-            </h2>
-            <p className="text-sm text-lz-charcoal-muted">
-              Registre productos llevados o dinero sacado de la caja para descontar en el pago
-            </p>
-          </div>
+          <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
+            Vales
+          </h2>
           <button
             type="button"
             onClick={onCerrar}
@@ -272,60 +267,44 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
 
         <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-5">
           <form onSubmit={alEnviar} noValidate className="flex flex-col gap-4 rounded-2xl border border-lz-border bg-lz-surface p-4">
-            <h3 className="font-lz-display text-base font-bold text-lz-charcoal">Registrar vale</h3>
-
             {falloConexion && <AvisoSinConexion onReintentar={reintentarGuardar} reintentando={guardando} />}
 
-            {/* Selector intuitivo: ¿Sale dinero de la caja o es producto? */}
-            <fieldset disabled={guardando} className="flex flex-col gap-2">
-              <legend className="mb-1 text-sm font-medium text-lz-charcoal-muted">
-                ¿Sale dinero en efectivo de la caja?
-              </legend>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <fieldset disabled={guardando}>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   aria-pressed={!saleDeCaja}
                   onClick={() => setSaleDeCaja(false)}
-                  className={`flex min-h-[60px] flex-col items-start justify-center rounded-2xl border-2 px-4 py-2.5 text-left transition-colors ${
+                  className={`flex min-h-[54px] items-center justify-center gap-2 rounded-2xl border-2 px-4 text-base font-bold transition-colors ${
                     !saleDeCaja
                       ? 'border-lz-sage bg-lz-sage-light text-lz-charcoal'
                       : 'border-lz-border bg-lz-surface text-lz-charcoal hover:bg-lz-oat'
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-base font-bold">
-                    <span
-                      className={`inline-block h-3 w-3 rounded-full ${
-                        !saleDeCaja ? 'bg-lz-sage' : 'border border-lz-charcoal-muted'
-                      }`}
-                    />
-                    No · Lleva producto
-                  </span>
-                  <span className="mt-0.5 text-xs text-lz-charcoal-muted">
-                    No saca billetes del cajón (no afecta el cuadre)
-                  </span>
+                  <span
+                    className={`inline-block h-3 w-3 rounded-full ${
+                      !saleDeCaja ? 'bg-lz-sage' : 'border border-lz-charcoal-muted'
+                    }`}
+                  />
+                  Lleva producto
                 </button>
 
                 <button
                   type="button"
                   aria-pressed={saleDeCaja}
                   onClick={() => setSaleDeCaja(true)}
-                  className={`flex min-h-[60px] flex-col items-start justify-center rounded-2xl border-2 px-4 py-2.5 text-left transition-colors ${
+                  className={`flex min-h-[54px] items-center justify-center gap-2 rounded-2xl border-2 px-4 text-base font-bold transition-colors ${
                     saleDeCaja
                       ? 'border-lz-amber bg-lz-amber-light text-lz-charcoal'
                       : 'border-lz-border bg-lz-surface text-lz-charcoal hover:bg-lz-oat'
                   }`}
                 >
-                  <span className="flex items-center gap-2 text-base font-bold">
-                    <span
-                      className={`inline-block h-3 w-3 rounded-full ${
-                        saleDeCaja ? 'bg-lz-amber' : 'border border-lz-charcoal-muted'
-                      }`}
-                    />
-                    Sí · Saca dinero de caja
-                  </span>
-                  <span className="mt-0.5 text-xs text-lz-charcoal-muted">
-                    Se resta del efectivo del turno para cuadrar caja
-                  </span>
+                  <span
+                    className={`inline-block h-3 w-3 rounded-full ${
+                      saleDeCaja ? 'bg-lz-amber' : 'border border-lz-charcoal-muted'
+                    }`}
+                  />
+                  Lleva dinero
                 </button>
               </div>
             </fieldset>
@@ -333,7 +312,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor={idValor} className="text-sm font-medium text-lz-charcoal-muted">
-                  Monto del vale (COP)
+                  Monto (COP)
                 </label>
                 <input
                   id={idValor}
@@ -342,10 +321,9 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
                   autoComplete="off"
                   value={valor}
                   onChange={(e) => setValor(conMiles(e.target.value))}
-                  placeholder="Ej: 15.000"
                   aria-invalid={errores.valor ? true : undefined}
                   aria-describedby={errores.valor ? `${idValor}-error` : undefined}
-                  className={`min-h-[56px] w-full rounded-2xl border-2 bg-lz-surface px-4 font-lz-display text-2xl font-bold tabular-nums text-lz-charcoal placeholder:text-base placeholder:font-normal placeholder:text-lz-charcoal-muted focus:outline-none ${
+                  className={`min-h-[56px] w-full rounded-2xl border-2 bg-lz-surface px-4 font-lz-display text-2xl font-bold tabular-nums text-lz-charcoal focus:outline-none ${
                     errores.valor ? 'border-lz-danger' : 'border-lz-border focus:border-lz-sage'
                   }`}
                 />
@@ -358,7 +336,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
 
               <div className="flex flex-col gap-1">
                 <label htmlFor={idDescripcion} className="text-sm font-medium text-lz-charcoal-muted">
-                  Descripción ({saleDeCaja ? 'motivo del vale' : 'qué productos lleva'})
+                  Descripción
                 </label>
                 <input
                   id={idDescripcion}
@@ -367,10 +345,9 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
                   value={descripcion}
                   maxLength={DESCRIPCION_MAX + 20}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder={saleDeCaja ? 'Ej: Adelanto en efectivo' : 'Ej: 2 pasteles y 1 gaseosa'}
                   aria-invalid={errores.descripcion ? true : undefined}
                   aria-describedby={errores.descripcion ? `${idDescripcion}-error` : undefined}
-                  className={`min-h-[56px] w-full rounded-2xl border-2 bg-lz-surface px-4 text-base text-lz-charcoal placeholder:text-lz-charcoal-muted focus:outline-none ${
+                  className={`min-h-[56px] w-full rounded-2xl border-2 bg-lz-surface px-4 text-base text-lz-charcoal focus:outline-none ${
                     errores.descripcion ? 'border-lz-danger' : 'border-lz-border focus:border-lz-sage'
                   }`}
                 />
@@ -405,11 +382,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
               disabled={guardando}
               className="min-h-[56px] w-full rounded-2xl bg-lz-sage px-6 font-lz-display text-lg font-bold text-lz-surface shadow-lz-float transition-colors hover:bg-lz-sage-dark disabled:opacity-50"
             >
-              {guardando
-                ? 'Guardando…'
-                : saleDeCaja
-                  ? 'Registrar vale (sale dinero de caja)'
-                  : 'Registrar vale de producto'}
+              {guardando ? 'Guardando…' : 'Registrar vale'}
             </button>
           </form>
 
@@ -472,7 +445,7 @@ export function PanelVales({ turnoId, personas, onCambio, onTurnoCerrado, onCerr
                               : 'bg-lz-sage-light text-lz-sage-dark'
                           }`}
                         >
-                          {v.saleDeCaja ? 'Dinero de caja' : 'Producto / Consumo'}
+                          {v.saleDeCaja ? 'Lleva dinero' : 'Lleva producto'}
                         </span>
                       </div>
                       <p className=" break-words text-base font-semibold text-lz-charcoal">{v.descripcion}</p>
