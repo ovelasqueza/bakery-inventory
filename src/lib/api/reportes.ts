@@ -1,4 +1,5 @@
 import { llamarRpc } from '@/lib/api/errores';
+import { obtenerIdsGastosValesRespaldo } from '@/lib/api/vales';
 import type { Rango } from '@/lib/fechas/bogota';
 import type {
   AutoconsumoReporte,
@@ -215,15 +216,35 @@ function aAutoconsumo(a: AutoconsumoCrudo): AutoconsumoReporte {
  * llegan como `SIN_CONEXION` para que la vista conserve el último reporte (Req 12.13).
  */
 export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
-  const data = await llamarRpc<ReporteCrudo>('reporte_rango', {
-    p_desde: rango.desde,
-    p_hasta: rango.hasta,
+  const [data, idsValesRespaldo] = await Promise.all([
+    llamarRpc<ReporteCrudo>('reporte_rango', {
+      p_desde: rango.desde,
+      p_hasta: rango.hasta,
+    }),
+    obtenerIdsGastosValesRespaldo().catch(() => new Set<string>()),
+  ]);
+
+  const todosGastos = (data.gastos ?? []).map(aGasto);
+  const valesPorTurno = new Map<string, number>();
+  if (idsValesRespaldo.size > 0) {
+    for (const g of todosGastos) {
+      if (idsValesRespaldo.has(g.id) && g.turnoId) {
+        valesPorTurno.set(g.turnoId, (valesPorTurno.get(g.turnoId) ?? 0) + g.valor);
+      }
+    }
+  }
+
+  const gastos = idsValesRespaldo.size > 0 ? todosGastos.filter((g) => !idsValesRespaldo.has(g.id)) : todosGastos;
+  const turnos = (data.turnos ?? []).map(aTurno).map((t) => {
+    const restar = valesPorTurno.get(t.id) ?? 0;
+    return restar > 0 ? { ...t, totalGastos: Math.max(0, t.totalGastos - restar) } : t;
   });
+
   return {
     ventas: (data.ventas ?? []).map(aVenta),
     productos: (data.productos ?? []).map(aProducto),
-    gastos: (data.gastos ?? []).map(aGasto),
-    turnos: (data.turnos ?? []).map(aTurno),
+    gastos,
+    turnos,
     metodos: (data.metodos ?? []).map(aMetodo),
     categoriasGasto: (data.categorias_gasto ?? []).map(aCategoria),
     autoconsumos: (data.autoconsumos ?? []).map(aAutoconsumo),

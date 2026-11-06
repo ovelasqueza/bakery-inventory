@@ -31,6 +31,7 @@ import { SeccionMetodos } from './SeccionMetodos';
 import { SeccionAutoconsumo } from './SeccionAutoconsumo';
 import { SeccionConfiguracion } from './SeccionConfiguracion';
 import { SeccionCajaMayor } from './SeccionCajaMayor';
+import { SeccionVales } from './SeccionVales';
 
 /** Secciones que se calculan con reporte_rango y se pueden exportar. */
 function esSeccionReporte(s: SeccionModulo): s is Seccion {
@@ -43,6 +44,7 @@ function esSeccionReporte(s: SeccionModulo): s is Seccion {
     case 'metodos':
     case 'autoconsumo':
       return true;
+    case 'vales':
     case 'caja-mayor':
     case 'configuracion':
       return false;
@@ -101,9 +103,9 @@ export function ModuloReportes() {
   const [estado, setEstado] = useState<EstadoReporte>(ESTADO_INICIAL);
   const peticion = useRef(0);
 
-  // Caja mayor usa el rango pero carga sus propios datos (no reporte_rango).
+  // Caja mayor y Vales usan el rango pero cargan sus propios datos.
   const esReporte = esSeccionReporte(seccion);
-  const usaRango = esReporte || seccion === 'caja-mayor';
+  const usaRango = esReporte || seccion === 'caja-mayor' || seccion === 'vales';
 
   const cargar = useCallback(
     async (r: Rango) => {
@@ -204,6 +206,8 @@ export function ModuloReportes() {
               error={estado.error}
               onReintentar={() => void cargar(rango)}
             />
+          ) : seccion === 'vales' ? (
+            <SeccionVales rango={rango} />
           ) : seccion === 'caja-mayor' ? (
             <SeccionCajaMayor rango={rango} revisarAcceso={revisarAcceso} />
           ) : (

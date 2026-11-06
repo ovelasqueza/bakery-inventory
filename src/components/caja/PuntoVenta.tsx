@@ -41,6 +41,7 @@ import { ListaVentasTurno } from '@/components/caja/ListaVentasTurno';
 import { PanelCarrito } from '@/components/caja/PanelCarrito';
 import { PanelCobro, type AccionConfirmarCobro } from '@/components/caja/PanelCobro';
 import { PanelGastos } from '@/components/caja/PanelGastos';
+import { PanelVales } from '@/components/caja/PanelVales';
 import { ResultadoCierre } from '@/components/caja/ResultadoCierre';
 import { useBusquedaDiferida } from '@/hooks/caja/useBusquedaDiferida';
 import { useCajon } from '@/hooks/caja/useCajon';
@@ -79,6 +80,7 @@ type Vista =
   | 'ventas'
   | 'gastos'
   | 'retiro'
+  | 'vales'
   | 'autoconsumo' // cuadrícula + Seleccion_Autoconsumo
   | 'calculadora'; // teclado + PanelValores (cobro directo)
 
@@ -87,6 +89,7 @@ const VISTA_DE_ACCION: Record<AccionCaja, Vista> = {
   ventas: 'ventas',
   gastos: 'gastos',
   retiro: 'retiro',
+  vales: 'vales',
   autoconsumo: 'autoconsumo',
   calculadora: 'calculadora',
   cerrar: 'cerrando',
@@ -100,6 +103,7 @@ function accionActiva(vista: Vista): AccionCaja | null {
     case 'ventas':
     case 'gastos':
     case 'retiro':
+    case 'vales':
     case 'autoconsumo':
     case 'calculadora':
       return vista;
@@ -771,6 +775,16 @@ export function PuntoVenta() {
           turnoId={turno.id}
           personas={parametros.personas}
           onRegistrado={volverAVender}
+          onTurnoCerrado={alTurnoCerrado}
+          onCerrar={volverAVender}
+        />
+      )}
+
+      {vista === 'vales' && (
+        <PanelVales
+          turnoId={turno.id}
+          personas={parametros.personas}
+          onCambio={sinCambios}
           onTurnoCerrado={alTurnoCerrado}
           onCerrar={volverAVender}
         />

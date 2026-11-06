@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { ENCABEZADO, type LayoutCaja } from '@/lib/caja/layout';
 
-export type AccionCaja = 'ventas' | 'gastos' | 'retiro' | 'autoconsumo' | 'calculadora' | 'cerrar';
+export type AccionCaja = 'ventas' | 'gastos' | 'retiro' | 'vales' | 'autoconsumo' | 'calculadora' | 'cerrar';
 
 interface BarraAccionesCajaProps {
   layout: LayoutCaja;
@@ -55,6 +55,13 @@ const ICONO_RETIRO = (
   </Icono>
 );
 
+const ICONO_VALES = (
+  <Icono>
+    <path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7z" />
+    <path d="M9 12h6M9 9h3" />
+  </Icono>
+);
+
 /** Taza con vapor: consumo de la casa. */
 const ICONO_AUTOCONSUMO = (
   <Icono>
@@ -92,6 +99,7 @@ const ACCIONES: ReadonlyArray<{ accion: AccionCaja; texto: string; etiqueta: Rea
   // <wbr>: si no cabe, parte después de la barra ("Gastos/" · "Pedidos").
   { accion: 'gastos', texto: 'Gastos/Pedidos', etiqueta: <>Gastos/<wbr />Pedidos</>, icono: ICONO_GASTOS },
   { accion: 'retiro', texto: 'Retiros', etiqueta: 'Retiros', icono: ICONO_RETIRO },
+  { accion: 'vales', texto: 'Vales', etiqueta: 'Vales', icono: ICONO_VALES },
   { accion: 'autoconsumo', texto: 'Autoconsumo', etiqueta: 'Autoconsumo', icono: ICONO_AUTOCONSUMO },
   { accion: 'calculadora', texto: 'Calculadora', etiqueta: 'Calculadora', icono: ICONO_CALCULADORA },
   { accion: 'cerrar', texto: 'Cerrar turno', etiqueta: 'Cerrar turno', icono: ICONO_CERRAR },
@@ -100,7 +108,7 @@ const ACCIONES: ReadonlyArray<{ accion: AccionCaja; texto: string; etiqueta: Rea
 export function BarraAccionesCaja({ layout, activo, onAccion }: BarraAccionesCajaProps) {
   const ancho = layout.anchoBotonAccion;
   const gap = ENCABEZADO.gap;
-  const porFila = layout.filasAcciones === 2 ? ENCABEZADO.botones / 2 : ENCABEZADO.botones;
+  const porFila = layout.filasAcciones === 2 ? Math.ceil(ENCABEZADO.botones / 2) : ENCABEZADO.botones;
   const enLinea = layout.etiquetaAcciones === 'en-linea';
   const compacto = layout.filasAcciones === 2;
 
@@ -115,8 +123,9 @@ export function BarraAccionesCaja({ layout, activo, onAccion }: BarraAccionesCaj
   return (
     <nav
       aria-label="Acciones de caja"
-      className={`grid shrink-0 items-center ${porFila === 3 ? 'grid-cols-3' : 'grid-cols-6'}`}
+      className="grid shrink-0 items-center"
       style={{
+        gridTemplateColumns: `repeat(${porFila}, minmax(0, 1fr))`,
         columnGap: gap,
         rowGap: ENCABEZADO.gapFilas,
         width: porFila * ancho + (porFila - 1) * gap,

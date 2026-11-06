@@ -19,7 +19,7 @@ export const MEDIDAS = {
  * si no hay espacio, primero se quita el logo, luego el reloj y al final se pasan a 2 filas de 3.
  */
 export const ENCABEZADO = {
-  botones: 6,
+  botones: 7,
   /** Alto de cada botón con una sola fila (encabezado de 96 px). */
   altoBoton: 64,
   /** Alto de cada botón con 2 filas. */
@@ -115,7 +115,7 @@ function repartoEncabezado(ancho: number, margen: number) {
   return {
     parte: 'acciones' as const,
     filas: 2 as const,
-    ancho: anchoBoton(ancho, margen, 'acciones', seis / 2),
+    ancho: anchoBoton(ancho, margen, 'acciones', Math.ceil(seis / 2)),
   };
 }
 

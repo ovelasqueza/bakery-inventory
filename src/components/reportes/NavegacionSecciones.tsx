@@ -9,6 +9,7 @@ export type SeccionModulo =
   | 'productos'
   | 'turnos'
   | 'gastos'
+  | 'vales'
   | 'metodos'
   | 'autoconsumo'
   | 'caja-mayor'
@@ -20,6 +21,7 @@ export const SECCIONES: { id: SeccionModulo; etiqueta: string }[] = [
   { id: 'productos', etiqueta: 'Productos' },
   { id: 'turnos', etiqueta: 'Turnos' },
   { id: 'gastos', etiqueta: 'Gastos' },
+  { id: 'vales', etiqueta: 'Vales' },
   { id: 'metodos', etiqueta: 'Métodos de pago' },
   { id: 'autoconsumo', etiqueta: 'Autoconsumo' },
   { id: 'caja-mayor', etiqueta: 'Caja mayor' },
