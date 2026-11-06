@@ -166,6 +166,32 @@ export interface Database {
           updated_at?: string;
         };
       };
+      categorias: {
+        Row: {
+          id: string;
+          nombre: string;
+          descripcion: string | null;
+          activo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          nombre: string;
+          descripcion?: string | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          descripcion?: string | null;
+          activo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       // ---- Tablas de movimientos (RLS: solo SELECT; se escriben con RPC) ----
       // Todos los montos son enteros en COP.
       turnos: {

@@ -20,6 +20,7 @@ export type MetodoPagoParam = {
 export type CategoriaGastoParam = { id: string; nombre: string; activo: boolean };
 export type PersonaCajaParam = { id: string; nombre: string; activo: boolean };
 export type CategoriaProducto = { id: string; nombre: string };
+export type CategoriaProductoParam = { id: string; nombre: string; activo: boolean };
 
 export type ParametrosCaja = {
   metodosPago: MetodoPagoParam[];
@@ -358,10 +359,146 @@ export async function actualizarProductoCaja(
   return aProducto(resultado);
 }
 
-/** Categorías de producto de la tabla `categorias`. */
-export async function listarCategorias(): Promise<CategoriaProducto[]> {
-  const filas = await consultar<CategoriaProducto[]>((s) =>
-    supabase.from('categorias').select('id, nombre').order('nombre', { ascending: true }).abortSignal(s),
+const CLAVE_CATEGORIAS_INACTIVAS = 'categorias_producto_inactivas';
+
+type FilaCategoriaProducto = { id: string; nombre: string; activo?: boolean | null };
+
+async function leerIdsCategoriasInactivas(): Promise<Set<string>> {
+  const filas = await consultar<{ valor: string | null }[]>((s) =>
+    supabase
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', CLAVE_CATEGORIAS_INACTIVAS)
+      .abortSignal(s),
   );
-  return (filas ?? []).map((f) => ({ id: f.id, nombre: f.nombre }));
+  const raw = filas?.[0]?.valor;
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.filter((x): x is string => typeof x === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+async function guardarIdsCategoriasInactivas(ids: Set<string>): Promise<void> {
+  await guardarConfig(CLAVE_CATEGORIAS_INACTIVAS, JSON.stringify(Array.from(ids)));
+}
+
+/** Todas las categorías de producto (activas e inactivas) para Configuración. */
+export async function listarCategoriasProducto(): Promise<CategoriaProductoParam[]> {
+  const [filas, inactivas] = await Promise.all([
+    consultar<FilaCategoriaProducto[]>((s) =>
+      supabase.from('categorias').select('*').order('nombre', { ascending: true }).abortSignal(s),
+    ),
+    leerIdsCategoriasInactivas(),
+  ]);
+  return (filas ?? []).map((f) => ({
+    id: f.id,
+    nombre: f.nombre,
+    activo: typeof f.activo === 'boolean' ? f.activo && !inactivas.has(f.id) : !inactivas.has(f.id),
+  }));
+}
+
+/** Categorías de producto activas (para selector de productos y Caja). */
+export async function listarCategorias(): Promise<CategoriaProducto[]> {
+  const todas = await listarCategoriasProducto();
+  return todas.filter((c) => c.activo).map((c) => ({ id: c.id, nombre: c.nombre }));
+}
+
+export async function crearCategoriaProducto(
+  nombre: string,
+  activo = true,
+): Promise<CategoriaProductoParam> {
+  const limpio = nombre.trim();
+  const fila = await consultar<FilaCategoriaProducto>((s) =>
+    supabase.from('categorias').insert({ nombre: limpio }).select('*').abortSignal(s).single(),
+  );
+  if (!activo) {
+    return actualizarCategoriaProducto(fila.id, { activo: false });
+  }
+  return { id: fila.id, nombre: fila.nombre, activo: true };
+}
+
+/**
+ * Actualiza el nombre o el estado activo de una categoría de producto.
+ * Si se desactiva (`activo === false`), deja sin categoría (`categoria_id = null`)
+ * todos los productos que la tuvieran asignada.
+ */
+export async function actualizarCategoriaProducto(
+  id: string,
+  cambios: { nombre?: string; activo?: boolean },
+): Promise<CategoriaProductoParam> {
+  if (cambios.activo === false) {
+    await consultar((s) =>
+      supabase.from('productos').update({ categoria_id: null }).eq('categoria_id', id).abortSignal(s),
+    );
+  }
+
+  const inactivas = await leerIdsCategoriasInactivas();
+  const teniaEnRespaldo = inactivas.has(id);
+  if (cambios.activo !== undefined) {
+    if (cambios.activo) inactivas.delete(id);
+    else inactivas.add(id);
+  }
+
+  let fila: FilaCategoriaProducto;
+  const tieneColumnaActivo = async (): Promise<FilaCategoriaProducto | null> => {
+    const datos: Record<string, unknown> = {};
+    if (cambios.nombre !== undefined) datos.nombre = cambios.nombre.trim();
+    if (cambios.activo !== undefined) datos.activo = cambios.activo;
+    if (Object.keys(datos).length === 0) return null;
+    if (sinConexion()) throw new ErrorApp('SIN_CONEXION');
+    const res = await supabase
+      .from('categorias')
+      .update(datos)
+      .eq('id', id)
+      .select('*')
+      .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS))
+      .single();
+    if (res.error) {
+      const msg = String((res.error as { message?: string }).message ?? '');
+      if (cambios.activo !== undefined && /activo/i.test(msg)) {
+        return null; // La migración `migration-categorias.sql` aún no se ha ejecutado; usar respaldo
+      }
+      throw traducirError(res.error, res.status);
+    }
+    return res.data as FilaCategoriaProducto;
+  };
+
+  const actualizadaConColumna = await tieneColumnaActivo();
+  if (actualizadaConColumna) {
+    fila = actualizadaConColumna;
+    if (cambios.activo !== undefined && teniaEnRespaldo) {
+      await guardarIdsCategoriasInactivas(inactivas);
+    }
+  } else {
+    if (cambios.nombre !== undefined) {
+      fila = await consultar<FilaCategoriaProducto>((s) =>
+        supabase
+          .from('categorias')
+          .update({ nombre: cambios.nombre!.trim() })
+          .eq('id', id)
+          .select('*')
+          .abortSignal(s)
+          .single(),
+      );
+    } else {
+      fila = await consultar<FilaCategoriaProducto>((s) =>
+        supabase.from('categorias').select('*').eq('id', id).abortSignal(s).single(),
+      );
+    }
+    if (cambios.activo !== undefined) {
+      await guardarIdsCategoriasInactivas(inactivas);
+    }
+  }
+
+  const activoFinal =
+    cambios.activo !== undefined
+      ? cambios.activo
+      : typeof fila.activo === 'boolean'
+        ? fila.activo && !inactivas.has(fila.id)
+        : !inactivas.has(fila.id);
+
+  return { id: fila.id, nombre: fila.nombre, activo: activoFinal };
 }

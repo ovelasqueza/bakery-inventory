@@ -7,6 +7,7 @@ import { useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } 
 import Link from 'next/link';
 import { useToast } from '@/components/ui';
 import { ImagenProducto } from '@/components/caja/ImagenProducto';
+import { ACEPTA_FOTOS, useFotoProducto, type EstadoFoto } from '@/components/productos/useFotoProducto';
 import {
   actualizarProductoCaja,
   listarCategorias,
@@ -23,12 +24,88 @@ import { formatCurrency } from '@/lib/utils';
 const ORDEN_MIN = 0;
 const ORDEN_MAX = 9999;
 const VALOR_SIN_CATEGORIA = '';
+const FILTRO_TODAS = 'todas';
+const FILTRO_SIN_CATEGORIA = 'sin-categoria';
 
 const MENSAJES_ORDEN = {
   VACIO: 'Escriba el orden.',
   NO_ENTERO: 'Use solo números enteros, sin signos ni puntos.',
   RANGO: `El orden debe estar entre ${ORDEN_MIN} y ${ORDEN_MAX}.`,
 } as const;
+
+const TEXTO_PROGRESO_FOTO: Record<EstadoFoto, string | null> = {
+  listo: null,
+  procesando: 'Preparando…',
+  subiendo: 'Subiendo…',
+  quitando: 'Quitando…',
+};
+
+function FotoFilaProducto({
+  productoId,
+  nombre,
+  imagenPath,
+  onCambio,
+}: {
+  productoId: string;
+  nombre: string;
+  imagenPath: string | null;
+  onCambio: (nuevoPath: string | null) => void;
+}) {
+  const { inputRef, pathActual, estado, ocupado, abrirSelector, alEscogerArchivo } =
+    useFotoProducto(productoId, imagenPath, onCambio);
+  const progreso = TEXTO_PROGRESO_FOTO[estado];
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={abrirSelector}
+        disabled={ocupado}
+        title={progreso ?? (pathActual ? `Cambiar foto de ${nombre}` : `Subir foto de ${nombre}`)}
+        aria-label={pathActual ? `Cambiar foto de ${nombre}` : `Subir foto de ${nombre}`}
+        className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-lz-border bg-lz-surface transition-colors hover:border-lz-sage focus:outline-none focus-visible:ring-2 focus-visible:ring-lz-sage disabled:cursor-wait"
+      >
+        <ImagenProducto nombre={nombre} imagenUrl={urlFoto(pathActual)} />
+        {!ocupado && (
+          <span className="absolute inset-0 flex items-center justify-center bg-lz-charcoal/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5 text-lz-surface"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </span>
+        )}
+        {ocupado && (
+          <span className="absolute inset-0 flex items-center justify-center bg-lz-surface/80">
+            <span
+              aria-hidden="true"
+              className="h-5 w-5 animate-spin rounded-full border-2 border-lz-sage border-t-transparent"
+            />
+          </span>
+        )}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACEPTA_FOTOS}
+        className="hidden"
+        onChange={alEscogerArchivo}
+        disabled={ocupado}
+      />
+    </>
+  );
+}
 
 type Cambios = { visibleCaja?: boolean; ordenCaja?: number; categoriaId?: string | null };
 
@@ -57,9 +134,14 @@ function mensajeError(error: unknown): string {
   return 'No se pudo guardar. Intente de nuevo.';
 }
 
-export function ConfigProductosCaja() {
+interface ConfigProductosCajaProps {
+  versionCategorias?: number;
+}
+
+export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCajaProps) {
   const { showToast } = useToast();
   const idBusqueda = useId();
+  const idFiltroCategoria = useId();
 
   const [productos, setProductos] = useState<ProductoConfigurable[]>([]);
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
@@ -67,23 +149,34 @@ export function ConfigProductosCaja() {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>(FILTRO_TODAS);
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  const cargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setCargando(true);
     setErrorCarga(null);
     try {
       const [lista, cats] = await Promise.all([productosConfigurables(), listarCategorias()]);
       setProductos(lista);
       setCategorias(cats);
-      setFilas(Object.fromEntries(lista.map((p) => [p.id, estadoInicial(p)])));
-    } catch (error) {
-      setErrorCarga(
-        error instanceof ErrorApp && error.codigo === 'SIN_CONEXION'
-          ? 'Sin conexión'
-          : 'No se pudieron cargar los productos.',
+      setFilas((prev) =>
+        Object.fromEntries(
+          lista.map((p) => {
+            const anterior = prev[p.id];
+            if (!anterior || !silencioso) return [p.id, estadoInicial(p)];
+            return [p.id, { ...anterior, borradorOrden: String(p.ordenCaja) }];
+          }),
+        ),
       );
+    } catch (error) {
+      if (!silencioso) {
+        setErrorCarga(
+          error instanceof ErrorApp && error.codigo === 'SIN_CONEXION'
+            ? 'Sin conexión'
+            : 'No se pudieron cargar los productos.',
+        );
+      }
     } finally {
-      setCargando(false);
+      if (!silencioso) setCargando(false);
     }
   }, []);
 
@@ -91,11 +184,31 @@ export function ConfigProductosCaja() {
     void cargar();
   }, [cargar]);
 
+  useEffect(() => {
+    if (versionCategorias > 0) {
+      void cargar(true);
+    }
+  }, [versionCategorias, cargar]);
+
+  useEffect(() => {
+    if (
+      filtroCategoria !== FILTRO_TODAS &&
+      filtroCategoria !== FILTRO_SIN_CATEGORIA &&
+      !categorias.some((c) => c.id === filtroCategoria)
+    ) {
+      setFiltroCategoria(FILTRO_TODAS);
+    }
+  }, [categorias, filtroCategoria]);
+
   const visibles = useMemo(() => {
     const q = normalizarTexto(busqueda);
-    if (q === '') return productos;
-    return productos.filter((p) => normalizarTexto(p.nombre).includes(q));
-  }, [productos, busqueda]);
+    return productos.filter((p) => {
+      if (q !== '' && !normalizarTexto(p.nombre).includes(q)) return false;
+      if (filtroCategoria === FILTRO_TODAS) return true;
+      if (filtroCategoria === FILTRO_SIN_CATEGORIA) return p.categoriaId === null;
+      return p.categoriaId === filtroCategoria;
+    });
+  }, [productos, busqueda, filtroCategoria]);
 
   function actualizarFila(id: string, cambio: Partial<EstadoFila>) {
     setFilas((prev) => {
@@ -145,36 +258,89 @@ export function ConfigProductosCaja() {
     }
   }
 
+  function alCambiarFoto(id: string, nuevoPath: string | null) {
+    setProductos((prev) => prev.map((p) => (p.id === id ? { ...p, imagenPath: nuevoPath } : p)));
+  }
+
   return (
     <section
       aria-label="Productos en la Caja"
       className="flex flex-col gap-4 rounded-2xl border border-lz-border bg-lz-surface p-4 shadow-lz-soft"
     >
-      <div className="flex flex-col gap-1">
-        <h2 className="font-lz-display text-lg font-semibold text-lz-charcoal">Productos en la Caja</h2>
-        <p className="text-sm text-lz-charcoal-muted">
-          Para cambiar fotos o precios, use{' '}
-          <Link
-            href="/productos"
-            className="inline-flex min-h-[44px] items-center font-semibold text-lz-sage underline hover:text-lz-sage-dark"
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-lz-display text-lg font-semibold text-lz-charcoal">Productos en la Caja</h2>
+          <p className="text-sm text-lz-charcoal-muted">
+            Puedes subir o cambiar la foto directamente aquí. Para cambiar precios, use{' '}
+            <Link
+              href="/productos"
+              className="inline-flex min-h-[44px] items-center font-semibold text-lz-sage underline hover:text-lz-sage-dark"
+            >
+              Productos
+            </Link>
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={cargando}
+          onClick={async () => {
+            await cargar();
+            showToast('Productos actualizados', 'success');
+          }}
+          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-2xl border-2 border-lz-border bg-lz-surface px-4 text-sm font-semibold text-lz-charcoal transition-colors hover:border-lz-sage-medium hover:bg-lz-sage-light disabled:opacity-50"
+        >
+          <svg
+            aria-hidden="true"
+            className={`h-4 w-4 ${cargando ? 'animate-spin' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            Productos
-          </Link>
-        </p>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          {cargando ? 'Actualizando…' : 'Actualizar productos'}
+        </button>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor={idBusqueda} className="text-sm font-medium text-lz-charcoal-muted">
-          Buscar producto
-        </label>
-        <input
-          id={idBusqueda}
-          type="search"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Nombre del producto"
-          className="min-h-[44px] w-full rounded-2xl border-2 border-lz-border bg-lz-surface px-3 text-base text-lz-charcoal focus:border-lz-sage focus:outline-none"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex flex-1 flex-col gap-1">
+          <label htmlFor={idBusqueda} className="text-sm font-medium text-lz-charcoal-muted">
+            Buscar producto
+          </label>
+          <input
+            id={idBusqueda}
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Nombre del producto"
+            className="min-h-[44px] w-full rounded-2xl border-2 border-lz-border bg-lz-surface px-3 text-base text-lz-charcoal focus:border-lz-sage focus:outline-none"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1 sm:w-64">
+          <label htmlFor={idFiltroCategoria} className="text-sm font-medium text-lz-charcoal-muted">
+            Filtrar por categoría
+          </label>
+          <select
+            id={idFiltroCategoria}
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            className="min-h-[44px] w-full rounded-2xl border-2 border-lz-border bg-lz-surface px-3 text-base text-lz-charcoal focus:border-lz-sage focus:outline-none"
+          >
+            <option value={FILTRO_TODAS}>Todas las categorías</option>
+            <option value={FILTRO_SIN_CATEGORIA}>Sin categoría</option>
+            {categorias.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {cargando && (
@@ -225,22 +391,27 @@ export function ConfigProductosCaja() {
                   p.activo ? '' : 'opacity-60'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-lz-border">
-                    <ImagenProducto nombre={p.nombre} imagenUrl={urlFoto(p.imagenPath)} />
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-base font-semibold text-lz-charcoal">{p.nombre}</span>
-                      {!p.activo && (
-                        <span className="rounded-full bg-lz-sand px-2 py-0.5 text-xs font-semibold text-lz-charcoal-muted">
-                          Inactivo
-                        </span>
-                      )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <FotoFilaProducto
+                      productoId={p.id}
+                      nombre={p.nombre}
+                      imagenPath={p.imagenPath}
+                      onCambio={(nuevoPath) => alCambiarFoto(p.id, nuevoPath)}
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-base font-semibold text-lz-charcoal">{p.nombre}</span>
+                        {!p.activo && (
+                          <span className="rounded-full bg-lz-sand px-2 py-0.5 text-xs font-semibold text-lz-charcoal-muted">
+                            Inactivo
+                          </span>
+                        )}
+                      </div>
+                      <span className={`text-sm ${p.precioVenta === null ? 'font-medium text-lz-danger' : 'text-lz-charcoal-muted'}`}>
+                        {p.precioVenta === null ? 'Sin precio de venta: no sale en Caja' : formatCurrency(p.precioVenta)}
+                      </span>
                     </div>
-                    <span className={`text-sm ${p.precioVenta === null ? 'font-medium text-lz-danger' : 'text-lz-charcoal-muted'}`}>
-                      {p.precioVenta === null ? 'Sin precio de venta: no sale en Caja' : formatCurrency(p.precioVenta)}
-                    </span>
                   </div>
                   {fila.guardando && (
                     <span role="status" className="shrink-0 text-xs font-medium text-lz-charcoal-muted">

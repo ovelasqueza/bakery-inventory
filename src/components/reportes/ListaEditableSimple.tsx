@@ -91,11 +91,11 @@ export function Interruptor({
   );
 }
 
-export function NotaDesactivados() {
+export function NotaDesactivados({ texto }: { texto?: string }) {
   return (
     <p className="rounded-2xl bg-lz-sage-light px-4 py-3 text-sm text-lz-charcoal-muted">
-      Nada se borra: lo desactivado se conserva en las ventas, gastos, turnos y reportes donde ya se usó, y deja de
-      aparecer en la Caja desde la próxima vez que se cargue la pantalla.
+      {texto ??
+        'Nada se borra: lo desactivado se conserva en las ventas, gastos, turnos y reportes donde ya se usó, y deja de aparecer en la Caja desde la próxima vez que se cargue la pantalla.'}
     </p>
   );
 }
@@ -193,6 +193,10 @@ interface ListaEditableSimpleProps {
   placeholder?: string;
   maxNombre: number;
   textoVacio: string;
+  /** Texto informativo opcional al pie del panel. */
+  nota?: string;
+  /** Se llama después de crear o actualizar un elemento. */
+  onCambio?: () => void;
   /** Deben ser funciones estables (definidas fuera del componente). */
   cargar: () => Promise<ItemSimple[]>;
   crear: (nombre: string) => Promise<ItemSimple>;
@@ -205,6 +209,8 @@ export function ListaEditableSimple({
   placeholder,
   maxNombre,
   textoVacio,
+  nota,
+  onCambio,
   cargar,
   crear,
   actualizar,
@@ -233,6 +239,7 @@ export function ListaEditableSimple({
       ponerItem(creado);
       setNuevo('');
       showToast(MENSAJE_GUARDADO, 'success');
+      onCambio?.();
     } catch (err) {
       setErrorNuevo(mensajeErrorGuardar(err));
     } finally {
@@ -292,13 +299,14 @@ export function ListaEditableSimple({
               onGuardado={(g) => {
                 ponerItem(g);
                 showToast(MENSAJE_GUARDADO, 'success');
+                onCambio?.();
               }}
             />
           ))}
         </ul>
       )}
 
-      <NotaDesactivados />
+      <NotaDesactivados texto={nota} />
     </section>
   );
 }
