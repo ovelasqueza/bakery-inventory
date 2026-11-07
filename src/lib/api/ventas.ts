@@ -1,7 +1,14 @@
 // Catálogo de Caja, registro, consulta y anulación de ventas.
 import { supabase } from '@/lib/supabase';
-import type { ProductoCaja } from '@/lib/caja/busqueda';
+import type { ProductoCaja, PromocionProducto } from '@/lib/caja/busqueda';
+import { descomponerCantidadConPromo } from '@/lib/caja/carrito';
 import { ErrorApp, llamarRpc, traducirError } from './errores';
+import {
+  leerMapaPromociones,
+  leerMapaVentaPorMonto,
+  resolverPromocionActiva,
+  resolverVentaPorMonto,
+} from './parametros';
 
 const TIEMPO_LIMITE_MS = 15_000;
 const BUCKET_FOTOS = 'productos';
@@ -24,7 +31,14 @@ export type CatalogoCaja = {
 
 export type TipoVenta = 'productos' | 'valor';
 
-export type LineaVenta = { productoId: string; cantidad: number; precio: number };
+export type LineaVenta = {
+  productoId: string;
+  cantidad: number;
+  precio: number;
+  /** Subtotal de la línea cuando aplica una promoción (ej. 8 × $400 en promo por $3.000). */
+  subtotal?: number;
+  promocion?: PromocionProducto | null;
+};
 
 export type EntradaVenta = {
   clave: string;
@@ -228,19 +242,24 @@ function urlFoto(path: string | null): string | null {
 export async function obtenerCatalogoCaja(): Promise<CatalogoCaja> {
   if (sinConexion()) throw new ErrorApp('SIN_CONEXION');
 
-  let respuesta;
-  try {
-    respuesta = await supabase
-      .from('productos')
-      .select('id,nombre,precio_venta,categoria_id,imagen_path,orden_caja,categorias(id,nombre)')
-      .eq('activo', true)
-      .neq('tipo_producto', 'materia_prima')
-      .eq('visible_caja', true)
-      .not('precio_venta', 'is', null)
-      .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS));
-  } catch (e) {
-    throw traducirError(e);
-  }
+  const [respuesta, mapaMonto, mapaPromos] = await Promise.all([
+    (async () => {
+      try {
+        return await supabase
+          .from('productos')
+          .select('id,nombre,precio_venta,categoria_id,imagen_path,orden_caja,categorias(id,nombre)')
+          .eq('activo', true)
+          .neq('tipo_producto', 'materia_prima')
+          .eq('visible_caja', true)
+          .not('precio_venta', 'is', null)
+          .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS));
+      } catch (e) {
+        throw traducirError(e);
+      }
+    })(),
+    leerMapaVentaPorMonto(),
+    leerMapaPromociones(),
+  ]);
   const { data, error, status } = respuesta;
   if (error) throw traducirError(error, status);
 
@@ -249,13 +268,16 @@ export async function obtenerCatalogoCaja(): Promise<CatalogoCaja> {
   const productos = filas.map((f): ProductoCaja => {
     const cat = primero(f.categorias);
     if (cat && f.categoria_id) categorias.set(cat.id, { id: cat.id, nombre: cat.nombre });
+    const precio = Math.round(Number(f.precio_venta));
     return {
       id: f.id,
       nombre: f.nombre,
-      precio: Math.round(Number(f.precio_venta)),
+      precio,
       categoriaId: f.categoria_id,
       imagenUrl: urlFoto(f.imagen_path),
       orden: f.orden_caja,
+      ventaPorMonto: resolverVentaPorMonto(f.id, f.nombre, mapaMonto),
+      promocion: resolverPromocionActiva(f.id, f.nombre, precio, mapaPromos),
     };
   });
 
@@ -274,74 +296,219 @@ export function derivarUuidSecundario(uuid: string): string {
 
 /** Registra la venta de forma atómica e idempotente por `clave` (Req 6.8, 6.12). */
 export async function registrarVenta(entrada: EntradaVenta): Promise<VentaRegistrada> {
-  const valores = entrada.valores ?? [];
-  const lineasRpc = entrada.lineas.map((l) => ({
-    producto_id: l.productoId,
-    cantidad: l.cantidad,
-    precio: l.precio,
-  }));
+  const valoresExtra: number[] = [...(entrada.valores ?? [])];
+  const ajustesPromoTemporales: { productoId: string; precioOriginal: number; precioPromo: number }[] = [];
 
-  if (valores.length > 0) {
-    try {
-      const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_combinada', {
-        p_clave: entrada.clave,
-        p_turno: entrada.turnoId,
-        p_metodo: entrada.metodoPagoId,
-        p_lineas: lineasRpc,
-        p_valores: valores,
-        p_recibido: entrada.recibido,
-      });
-      return mapearVentaRegistrada(r);
-    } catch (e) {
-      // Si la migración SQL de registrar_venta_combinada aún no se ha corrido en Supabase,
-      // respaldamos registrando productos y valores con claves idempotentes derivadas.
-      if (!(e instanceof ErrorApp) || e.codigo !== 'DESCONOCIDO') {
-        throw e;
+  const lineasRpc: { producto_id: string; cantidad: number; precio: number }[] = [];
+  const lineasPromoSecundarias: { producto_id: string; cantidad: number; precio: number }[] = [];
+  for (const l of entrada.lineas) {
+    const subtotalNormal = l.cantidad * l.precio;
+    const subtotalFinal = l.subtotal !== undefined ? l.subtotal : subtotalNormal;
+    if (subtotalFinal !== subtotalNormal && subtotalFinal > 0) {
+      const desglose = descomponerCantidadConPromo(l.cantidad, l.precio, l.promocion);
+      if (
+        desglose.promos > 0 &&
+        desglose.unidadesNormales > 0 &&
+        desglose.subtotalPromo % desglose.unidadesPromo === 0
+      ) {
+        // Caso combinado (ej. 13 panes = 8 en promo por $3.000 + 5 normales por $2.000):
+        // Registramos las 5 unidades normales a $400 y las 8 unidades de promo a $375
+        // para que las 13 unidades queden registradas como el producto en venta_detalles.
+        const precioUnitarioPromo = desglose.subtotalPromo / desglose.unidadesPromo;
+        ajustesPromoTemporales.push({
+          productoId: l.productoId,
+          precioOriginal: l.precio,
+          precioPromo: precioUnitarioPromo,
+        });
+        lineasRpc.push({
+          producto_id: l.productoId,
+          cantidad: desglose.unidadesNormales,
+          precio: l.precio,
+        });
+        lineasPromoSecundarias.push({
+          producto_id: l.productoId,
+          cantidad: desglose.unidadesPromo,
+          precio: precioUnitarioPromo,
+        });
+      } else if (subtotalFinal % l.cantidad === 0) {
+        const precioUnitarioPromo = subtotalFinal / l.cantidad;
+        ajustesPromoTemporales.push({
+          productoId: l.productoId,
+          precioOriginal: l.precio,
+          precioPromo: precioUnitarioPromo,
+        });
+        lineasRpc.push({
+          producto_id: l.productoId,
+          cantidad: l.cantidad,
+          precio: precioUnitarioPromo,
+        });
+      } else {
+        const cantNormal = Math.floor(subtotalFinal / l.precio);
+        const resto = subtotalFinal - cantNormal * l.precio;
+        if (cantNormal > 0) {
+          lineasRpc.push({
+            producto_id: l.productoId,
+            cantidad: cantNormal,
+            precio: l.precio,
+          });
+        }
+        if (resto > 0) {
+          valoresExtra.push(resto);
+        }
       }
-      const totalProductos = entrada.lineas.reduce((s, l) => s + l.cantidad * l.precio, 0);
-      const totalValores = valores.reduce((s, v) => s + v, 0);
-      const totalGeneral = totalProductos + totalValores;
-      const cambioTotal =
-        entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
-      const recibidoProductos =
-        entrada.recibido !== null ? totalProductos + cambioTotal : null;
-      const recibidoValores = entrada.recibido !== null ? totalValores : null;
-
-      const rProd = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
-        p_clave: entrada.clave,
-        p_turno: entrada.turnoId,
-        p_metodo: entrada.metodoPagoId,
-        p_lineas: lineasRpc,
-        p_recibido: recibidoProductos,
+    } else {
+      lineasRpc.push({
+        producto_id: l.productoId,
+        cantidad: l.cantidad,
+        precio: l.precio,
       });
-      const rVal = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_valor', {
-        p_clave: derivarUuidSecundario(entrada.clave),
-        p_turno: entrada.turnoId,
-        p_metodo: entrada.metodoPagoId,
-        p_valores: valores,
-        p_recibido: recibidoValores,
-      });
-      const total = rProd.total + rVal.total;
-      const cambio = rProd.cambio + rVal.cambio;
-      return {
-        ventaId: rProd.venta_id,
-        total,
-        efectivoRecibido: total + cambio,
-        cambio,
-        esEfectivo: rProd.es_efectivo,
-        creadoEn: rProd.creado_en,
-      };
     }
   }
 
-  const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
-    p_clave: entrada.clave,
-    p_turno: entrada.turnoId,
-    p_metodo: entrada.metodoPagoId,
-    p_lineas: lineasRpc,
-    p_recibido: entrada.recibido,
+  const ejecutarConRespaldoPromo = async <T>(fn: () => Promise<T>): Promise<T> => {
+    if (ajustesPromoTemporales.length === 0) return fn();
+    try {
+      return await fn();
+    } catch (err) {
+      if (!(err instanceof ErrorApp) || err.codigo !== 'PRECIOS_ACTUALIZADOS') {
+        throw err;
+      }
+      // Si la RPC en Supabase valida precio_venta === precio sin conocer aún la promoción,
+      // aplicamos temporalmente el precio unitario de promoción durante la llamada y restauramos al instante.
+      try {
+        await Promise.all(
+          ajustesPromoTemporales.map((a) =>
+            supabase.from('productos').update({ precio_venta: a.precioPromo }).eq('id', a.productoId)
+          )
+        );
+        return await fn();
+      } finally {
+        await Promise.all(
+          ajustesPromoTemporales.map((a) =>
+            supabase.from('productos').update({ precio_venta: a.precioOriginal }).eq('id', a.productoId)
+          )
+        );
+      }
+    }
+  };
+
+  if (lineasPromoSecundarias.length > 0 && valoresExtra.length === 0) {
+    const totalPrimario = lineasRpc.reduce((s, l) => s + l.cantidad * l.precio, 0);
+    const totalSecundario = lineasPromoSecundarias.reduce((s, l) => s + l.cantidad * l.precio, 0);
+    const totalGeneral = totalPrimario + totalSecundario;
+    const cambioTotal =
+      entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
+    const recibidoPrimario =
+      entrada.recibido !== null ? totalPrimario + cambioTotal : null;
+    const recibidoSecundario =
+      entrada.recibido !== null ? totalSecundario : null;
+
+    const rPrimario = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+      p_clave: entrada.clave,
+      p_turno: entrada.turnoId,
+      p_metodo: entrada.metodoPagoId,
+      p_lineas: lineasRpc,
+      p_recibido: recibidoPrimario,
+    });
+    const rSecundario = await ejecutarConRespaldoPromo(() =>
+      llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+        p_clave: derivarUuidSecundario(entrada.clave),
+        p_turno: entrada.turnoId,
+        p_metodo: entrada.metodoPagoId,
+        p_lineas: lineasPromoSecundarias,
+        p_recibido: recibidoSecundario,
+      })
+    );
+    const total = rPrimario.total + rSecundario.total;
+    const cambio = rPrimario.cambio + rSecundario.cambio;
+    return {
+      ventaId: rPrimario.venta_id,
+      total,
+      efectivoRecibido: total + cambio,
+      cambio,
+      esEfectivo: rPrimario.es_efectivo,
+      creadoEn: rPrimario.creado_en,
+    };
+  } else if (lineasPromoSecundarias.length > 0 && valoresExtra.length > 0) {
+    // Si además hay valores de calculadora en la misma venta combinada, sumamos el subtotal promo a las líneas
+    for (const lp of lineasPromoSecundarias) {
+      valoresExtra.push(lp.cantidad * lp.precio);
+    }
+  }
+
+  if (lineasRpc.length === 0 && valoresExtra.length > 0) {
+    return registrarVentaValor({
+      clave: entrada.clave,
+      turnoId: entrada.turnoId,
+      metodoPagoId: entrada.metodoPagoId,
+      valores: valoresExtra,
+      recibido: entrada.recibido,
+    });
+  }
+
+  if (valoresExtra.length > 0) {
+    return ejecutarConRespaldoPromo(async () => {
+      try {
+        const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_combinada', {
+          p_clave: entrada.clave,
+          p_turno: entrada.turnoId,
+          p_metodo: entrada.metodoPagoId,
+          p_lineas: lineasRpc,
+          p_valores: valoresExtra,
+          p_recibido: entrada.recibido,
+        });
+        return mapearVentaRegistrada(r);
+      } catch (e) {
+        if (!(e instanceof ErrorApp) || e.codigo !== 'DESCONOCIDO') {
+          throw e;
+        }
+        const totalProductos = lineasRpc.reduce((s, l) => s + l.cantidad * l.precio, 0);
+        const totalValores = valoresExtra.reduce((s, v) => s + v, 0);
+        const totalGeneral = totalProductos + totalValores;
+        const cambioTotal =
+          entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
+        const recibidoProductos =
+          entrada.recibido !== null ? totalProductos + cambioTotal : null;
+        const recibidoValores = entrada.recibido !== null ? totalValores : null;
+
+        const rProd = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+          p_clave: entrada.clave,
+          p_turno: entrada.turnoId,
+          p_metodo: entrada.metodoPagoId,
+          p_lineas: lineasRpc,
+          p_recibido: recibidoProductos,
+        });
+        const rVal = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_valor', {
+          p_clave: derivarUuidSecundario(entrada.clave),
+          p_turno: entrada.turnoId,
+          p_metodo: entrada.metodoPagoId,
+          p_valores: valoresExtra,
+          p_recibido: recibidoValores,
+        });
+        const total = rProd.total + rVal.total;
+        const cambio = rProd.cambio + rVal.cambio;
+        return {
+          ventaId: rProd.venta_id,
+          total,
+          efectivoRecibido: total + cambio,
+          cambio,
+          esEfectivo: rProd.es_efectivo,
+          creadoEn: rProd.creado_en,
+        };
+      }
+    });
+  }
+
+  return ejecutarConRespaldoPromo(async () => {
+    const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+      p_clave: entrada.clave,
+      p_turno: entrada.turnoId,
+      p_metodo: entrada.metodoPagoId,
+      p_lineas: lineasRpc,
+      p_recibido: entrada.recibido,
+    });
+    return mapearVentaRegistrada(r);
   });
-  return mapearVentaRegistrada(r);
 }
 
 /**

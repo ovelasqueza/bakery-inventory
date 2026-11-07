@@ -14,6 +14,7 @@ import {
   productosConfigurables,
   type CategoriaProducto,
   type ProductoConfigurable,
+  type PromocionConfigurable,
 } from '@/lib/api/parametros';
 import { ErrorApp } from '@/lib/api/errores';
 import { urlFoto } from '@/lib/api/fotos';
@@ -107,24 +108,38 @@ function FotoFilaProducto({
   );
 }
 
-type Cambios = { visibleCaja?: boolean; ordenCaja?: number; categoriaId?: string | null };
+type Cambios = {
+  visibleCaja?: boolean;
+  ordenCaja?: number;
+  categoriaId?: string | null;
+  ventaPorMonto?: boolean;
+  promocion?: PromocionConfigurable;
+};
 
 type EstadoFila = {
   /** Texto escrito en el campo de orden. */
   borradorOrden: string;
+  /** Texto escrito en la cantidad de promoción. */
+  borradorPromoCantidad: string;
+  /** Texto escrito en el precio de promoción. */
+  borradorPromoPrecio: string;
   /** Cambio que falló y se puede reintentar; mantiene en pantalla el valor escrito. */
   pendiente: Cambios | null;
   guardando: boolean;
   errorOrden: string | null;
+  errorPromo: string | null;
   errorGuardado: string | null;
 };
 
 function estadoInicial(p: ProductoConfigurable): EstadoFila {
   return {
     borradorOrden: String(p.ordenCaja),
+    borradorPromoCantidad: String(p.promocion?.cantidad ?? 8),
+    borradorPromoPrecio: String(p.promocion?.precio ?? 3000),
     pendiente: null,
     guardando: false,
     errorOrden: null,
+    errorPromo: null,
     errorGuardado: null,
   };
 }
@@ -163,7 +178,15 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
           lista.map((p) => {
             const anterior = prev[p.id];
             if (!anterior || !silencioso) return [p.id, estadoInicial(p)];
-            return [p.id, { ...anterior, borradorOrden: String(p.ordenCaja) }];
+            return [
+              p.id,
+              {
+                ...anterior,
+                borradorOrden: String(p.ordenCaja),
+                borradorPromoCantidad: String(p.promocion?.cantidad ?? 8),
+                borradorPromoPrecio: String(p.promocion?.precio ?? 3000),
+              },
+            ];
           }),
         ),
       );
@@ -228,7 +251,10 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
         pendiente: null,
         errorGuardado: null,
         errorOrden: null,
+        errorPromo: null,
         borradorOrden: String(actualizado.ordenCaja),
+        borradorPromoCantidad: String(actualizado.promocion.cantidad),
+        borradorPromoPrecio: String(actualizado.promocion.precio),
       });
       showToast('Guardado', 'success');
     } catch (error) {
@@ -249,6 +275,56 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
     const ordenMostrado = fila.pendiente?.ordenCaja ?? p.ordenCaja;
     if (res.valor === ordenMostrado && !fila.errorGuardado) return;
     void guardar(p.id, { ...(fila.pendiente ?? {}), ordenCaja: res.valor });
+  }
+
+  function confirmarPromocion(p: ProductoConfigurable, nuevoActivo?: boolean) {
+    const fila = filas[p.id];
+    if (!fila || fila.guardando) return;
+    const promoActual = fila.pendiente?.promocion ?? p.promocion;
+    const activoFinal = nuevoActivo !== undefined ? nuevoActivo : promoActual.activo;
+
+    // Si está desactivando la promoción, guarda de inmediato sin exigir validar los campos.
+    if (nuevoActivo === false) {
+      actualizarFila(p.id, { errorPromo: null });
+      void guardar(p.id, {
+        ...(fila.pendiente ?? {}),
+        promocion: {
+          activo: false,
+          cantidad: promoActual.cantidad || 8,
+          precio: promoActual.precio || 3000,
+        },
+      });
+      return;
+    }
+
+    const resCant = validarEnteroEnRango(fila.borradorPromoCantidad, 1, 999);
+    const resPrecio = validarEnteroEnRango(fila.borradorPromoPrecio, 1, 10_000_000);
+    if (!resCant.ok) {
+      actualizarFila(p.id, { errorPromo: 'La cantidad promo debe ser entre 1 y 999.' });
+      return;
+    }
+    if (!resPrecio.ok) {
+      actualizarFila(p.id, { errorPromo: 'El valor promo debe ser un número mayor a 0.' });
+      return;
+    }
+    actualizarFila(p.id, { errorPromo: null });
+    if (
+      nuevoActivo === undefined &&
+      resCant.valor === promoActual.cantidad &&
+      resPrecio.valor === promoActual.precio &&
+      !fila.errorGuardado
+    ) {
+      return;
+    }
+    void guardar(p.id, {
+      ...(fila.pendiente ?? {}),
+      ventaPorMonto: true,
+      promocion: {
+        activo: activoFinal,
+        cantidad: resCant.valor,
+        precio: resPrecio.valor,
+      },
+    });
   }
 
   function alPresionarTeclaOrden(e: KeyboardEvent<HTMLInputElement>, p: ProductoConfigurable) {
@@ -376,11 +452,15 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
           {visibles.map((p) => {
             const fila = filas[p.id] ?? estadoInicial(p);
             const visibleCaja = fila.pendiente?.visibleCaja ?? p.visibleCaja;
+            const ventaPorMonto = fila.pendiente?.ventaPorMonto ?? Boolean(p.ventaPorMonto);
+            const promo = fila.pendiente?.promocion ?? p.promocion;
             const categoriaId =
               fila.pendiente?.categoriaId !== undefined ? fila.pendiente.categoriaId : p.categoriaId;
             const idOrden = `orden-${p.id}`;
             const idCategoria = `categoria-${p.id}`;
             const idErrorOrden = `error-orden-${p.id}`;
+            const idPromoCantidad = `promo-cant-${p.id}`;
+            const idPromoPrecio = `promo-precio-${p.id}`;
             const categoriaExiste = categoriaId === null || categorias.some((c) => c.id === categoriaId);
 
             return (
@@ -421,26 +501,59 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                  <label className="flex min-h-[44px] cursor-pointer items-center gap-3 sm:flex-1">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={visibleCaja}
-                      disabled={fila.guardando}
-                      onClick={() => void guardar(p.id, { ...(fila.pendiente ?? {}), visibleCaja: !visibleCaja })}
-                      className={`relative inline-flex h-[44px] w-[72px] shrink-0 items-center rounded-full border-2 transition-colors disabled:cursor-wait ${
-                        visibleCaja ? 'border-lz-sage bg-lz-sage' : 'border-lz-border bg-lz-sand'
-                      }`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`inline-block h-8 w-8 rounded-full bg-lz-surface shadow-lz-soft transition-transform ${
-                          visibleCaja ? 'translate-x-[30px]' : 'translate-x-[4px]'
+                  <div className="flex flex-wrap items-center gap-4 sm:flex-1">
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={visibleCaja}
+                        disabled={fila.guardando}
+                        onClick={() => void guardar(p.id, { ...(fila.pendiente ?? {}), visibleCaja: !visibleCaja })}
+                        className={`relative inline-flex h-[44px] w-[72px] shrink-0 items-center rounded-full border-2 transition-colors disabled:cursor-wait ${
+                          visibleCaja ? 'border-lz-sage bg-lz-sage' : 'border-lz-border bg-lz-sand'
                         }`}
-                      />
-                    </button>
-                    <span className="text-sm font-medium text-lz-charcoal">Visible en Caja</span>
-                  </label>
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block h-8 w-8 rounded-full bg-lz-surface shadow-lz-soft transition-transform ${
+                            visibleCaja ? 'translate-x-[30px]' : 'translate-x-[4px]'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-sm font-medium text-lz-charcoal">Visible en Caja</span>
+                    </label>
+
+                    <label
+                      className="flex min-h-[44px] cursor-pointer items-center gap-3"
+                      title="Muestra el botón $ / und en la esquina superior izquierda del producto en Caja para abrir el popup de accesos rápidos (funciona con o sin promoción)"
+                    >
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={ventaPorMonto}
+                        disabled={fila.guardando}
+                        onClick={() =>
+                          void guardar(p.id, { ...(fila.pendiente ?? {}), ventaPorMonto: !ventaPorMonto })
+                        }
+                        className={`relative inline-flex h-[44px] w-[72px] shrink-0 items-center rounded-full border-2 transition-colors disabled:cursor-wait ${
+                          ventaPorMonto ? 'border-lz-sage bg-lz-sage' : 'border-lz-border bg-lz-sand'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block h-8 w-8 rounded-full bg-lz-surface shadow-lz-soft transition-transform ${
+                            ventaPorMonto ? 'translate-x-[30px]' : 'translate-x-[4px]'
+                          }`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-lz-charcoal">Accesos rápidos ($ / und)</span>
+                        <span className="text-xs text-lz-charcoal-muted">
+                          {ventaPorMonto ? 'Botón $ / und activo en Caja' : 'Activar popup de montos y unidades'}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
 
                   <div className="flex flex-col gap-1 sm:w-32">
                     <label htmlFor={idOrden} className="text-sm font-medium text-lz-charcoal-muted">
@@ -494,6 +607,116 @@ export function ConfigProductosCaja({ versionCategorias = 0 }: ConfigProductosCa
                     </select>
                   </div>
                 </div>
+
+                {/* Configuración de Promoción opcional (solo si el producto además tiene promo especial) */}
+                {(ventaPorMonto || promo.activo) && (
+                  <div className="flex flex-col gap-2.5 rounded-xl border border-lz-border bg-lz-surface p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="flex min-h-[44px] cursor-pointer items-center gap-3">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={promo.activo}
+                        disabled={fila.guardando}
+                        onClick={() => confirmarPromocion(p, !promo.activo)}
+                        className={`relative inline-flex h-[44px] w-[72px] shrink-0 items-center rounded-full border-2 transition-colors disabled:cursor-wait ${
+                          promo.activo ? 'border-lz-amber bg-lz-amber' : 'border-lz-border bg-lz-sand'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block h-8 w-8 rounded-full bg-lz-surface shadow-lz-soft transition-transform ${
+                            promo.activo ? 'translate-x-[30px]' : 'translate-x-[4px]'
+                          }`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-lz-charcoal">
+                          {promo.activo ? 'Con promoción especial' : 'Sin promoción (precio normal)'}
+                        </span>
+                        <span className="text-xs text-lz-charcoal-muted">
+                          {promo.activo
+                            ? `Activa: ${promo.cantidad} und por ${formatCurrency(promo.precio)}`
+                            : `Calcula directo a ${p.precioVenta ? formatCurrency(p.precioVenta) : '$ 0'} c/u (ej. $3.000 = ${
+                                p.precioVenta && p.precioVenta > 0 ? Math.floor(3000 / p.precioVenta) : 0
+                              } und)`}
+                        </span>
+                      </div>
+                    </label>
+
+                    {promo.activo && (
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor={idPromoCantidad} className="text-xs font-medium text-lz-charcoal-muted">
+                            Unidades promo
+                          </label>
+                          <input
+                            id={idPromoCantidad}
+                            type="text"
+                            inputMode="numeric"
+                            value={fila.borradorPromoCantidad}
+                            disabled={fila.guardando}
+                            onChange={(e) =>
+                              actualizarFila(p.id, {
+                                borradorPromoCantidad: e.target.value.replace(/\D/g, ''),
+                                errorPromo: null,
+                              })
+                            }
+                            onBlur={() => confirmarPromocion(p)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                confirmarPromocion(p);
+                              }
+                            }}
+                            className="min-h-[40px] w-24 rounded-xl border border-lz-border bg-lz-linen px-3 text-sm font-semibold text-lz-charcoal focus:border-lz-sage focus:outline-none"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor={idPromoPrecio} className="text-xs font-medium text-lz-charcoal-muted">
+                            Precio promo ($)
+                          </label>
+                          <input
+                            id={idPromoPrecio}
+                            type="text"
+                            inputMode="numeric"
+                            value={fila.borradorPromoPrecio}
+                            disabled={fila.guardando}
+                            onChange={(e) =>
+                              actualizarFila(p.id, {
+                                borradorPromoPrecio: e.target.value.replace(/\D/g, ''),
+                                errorPromo: null,
+                              })
+                            }
+                            onBlur={() => confirmarPromocion(p)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                confirmarPromocion(p);
+                              }
+                            }}
+                            className="min-h-[40px] w-32 rounded-xl border border-lz-border bg-lz-linen px-3 text-sm font-semibold text-lz-charcoal focus:border-lz-sage focus:outline-none"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={fila.guardando}
+                          onClick={() => confirmarPromocion(p)}
+                          className="min-h-[40px] rounded-xl bg-lz-sage px-3.5 text-xs font-bold text-lz-surface hover:bg-lz-sage-dark disabled:opacity-50"
+                        >
+                          Guardar promo
+                        </button>
+                      </div>
+                    )}
+
+                    {fila.errorPromo && (
+                      <p role="alert" className="w-full text-xs font-medium text-lz-danger">
+                        {fila.errorPromo}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {fila.errorGuardado && (
                   <div

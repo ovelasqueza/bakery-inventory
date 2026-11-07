@@ -33,6 +33,7 @@ import { ConfirmacionVenta, type DatosConfirmacionVenta } from '@/components/caj
 import { CuadriculaProductos } from '@/components/caja/CuadriculaProductos';
 import { DialogoAutoconsumo } from '@/components/caja/DialogoAutoconsumo';
 import { DialogoRetiro } from '@/components/caja/DialogoRetiro';
+import { DialogoVentaPorMonto } from '@/components/caja/DialogoVentaPorMonto';
 import { EncabezadoCaja } from '@/components/caja/EncabezadoCaja';
 import { FranjaAutoconsumo } from '@/components/caja/FranjaAutoconsumo';
 import { EstadoVacioCaja } from '@/components/caja/EstadoVacioCaja';
@@ -170,6 +171,7 @@ export function PuntoVenta() {
   const [dialogoAutoconsumo, setDialogoAutoconsumo] = useState(false);
   const [listaAutoconsumos, setListaAutoconsumos] = useState(false);
   const [confirmacionCobro, setConfirmacionCobro] = useState<AccionConfirmarCobro | null>(null);
+  const [productoPorMonto, setProductoPorMonto] = useState<ProductoCaja | null>(null);
 
   // ---------------------------------------------------------------------------
   // Pedido_Productos y Seleccion_Autoconsumo: dos Carritos separados (Req 8.5).
@@ -201,13 +203,23 @@ export function PuntoVenta() {
   );
 
   const agregarA = useCallback(
-    (despacho: (a: AccionCarrito) => ResultadoCarrito, p: ProductoCaja) => {
-      const r = despacho({ tipo: 'agregar', producto: { id: p.id, nombre: p.nombre, precio: p.precio } });
+    (despacho: (a: AccionCarrito) => ResultadoCarrito, p: ProductoCaja, cantidad = 1) => {
+      const r = despacho({
+        tipo: 'agregar',
+        producto: {
+          id: p.id,
+          nombre: p.nombre,
+          precio: p.precio,
+          promocion: p.promocion ?? null,
+        },
+        cantidad,
+      });
       if (r.aviso === 'CANTIDAD_MAXIMA') showToast(`Cantidad máxima: ${CANTIDAD_MAX}`, 'warning');
     },
     [showToast]
   );
   const agregar = useCallback((p: ProductoCaja) => agregarA(despachar, p), [agregarA, despachar]);
+  const abrirPopupPorMonto = useCallback((p: ProductoCaja) => setProductoPorMonto(p), []);
   const agregarSeleccion = useCallback(
     (p: ProductoCaja) => agregarA(despacharSeleccion, p),
     [agregarA, despacharSeleccion]
@@ -641,6 +653,7 @@ export function PuntoVenta() {
         columnas={layout.columnas}
         cantidades={enAutoconsumo ? cantidadesSeleccion : cantidades}
         onAgregar={enAutoconsumo ? agregarSeleccion : agregar}
+        onAbrirPorMonto={enAutoconsumo ? undefined : abrirPopupPorMonto}
         reservaInferior={reservaInferior}
         modo={enAutoconsumo ? 'autoconsumo' : 'venta'}
       />
@@ -845,6 +858,14 @@ export function PuntoVenta() {
       )}
 
       <ConfirmacionVenta venta={confirmacion} onCerrar={() => setConfirmacion(null)} />
+      <DialogoVentaPorMonto
+        producto={productoPorMonto}
+        onElegir={(p, cantidad) => {
+          agregarA(despachar, p, cantidad);
+          setProductoPorMonto(null);
+        }}
+        onCerrar={() => setProductoPorMonto(null)}
+      />
     </>
   );
 }

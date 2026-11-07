@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { ErrorApp, traducirError } from '@/lib/api/errores';
+import { normalizarTexto, type PromocionProducto } from '@/lib/caja/busqueda';
 
 // ============================================
 // Parámetros de la Caja (Req 2.2, 2.3, 6.2, 14.1–14.8, 14.12, 14.13)
@@ -32,6 +33,12 @@ export type ParametrosCaja = {
   cajonEnTurno: boolean;
 };
 
+export type PromocionConfigurable = {
+  activo: boolean;
+  cantidad: number;
+  precio: number;
+};
+
 export type ProductoConfigurable = {
   id: string;
   nombre: string;
@@ -42,6 +49,10 @@ export type ProductoConfigurable = {
   visibleCaja: boolean;
   ordenCaja: number;
   imagenPath: string | null;
+  /** Si está activo, muestra el botón superior izquierdo ($ / und) en Caja para abrir el popup. */
+  ventaPorMonto: boolean;
+  /** Promoción parametrizable para este producto (ej. 8 unidades por $ 3.000). */
+  promocion: PromocionConfigurable;
 };
 
 export type ClaveConfigCaja = 'base_caja_defecto' | 'cajon_al_cobrar' | 'cajon_en_turno';
@@ -100,17 +111,41 @@ function aSimple(f: FilaSimple): { id: string; nombre: string; activo: boolean }
   return { id: f.id, nombre: f.nombre, activo: f.activo };
 }
 
-function aProducto(f: FilaProducto): ProductoConfigurable {
+function promocionPorDefecto(nombre: string, precioVenta: number | null): PromocionConfigurable {
+  if (normalizarTexto(nombre) === 'pan de 400' || precioVenta === 400) {
+    return {
+      activo: normalizarTexto(nombre) === 'pan de 400',
+      cantidad: 8,
+      precio: 3000,
+    };
+  }
+  const p = precioVenta && precioVenta > 0 ? precioVenta : 500;
+  return {
+    activo: false,
+    cantidad: 5,
+    precio: p * 5,
+  };
+}
+
+function aProducto(
+  f: FilaProducto,
+  ventaPorMonto = false,
+  promocion?: PromocionConfigurable,
+): ProductoConfigurable {
+  const precioVenta =
+    f.precio_venta === null || f.precio_venta === undefined ? null : Number(f.precio_venta);
   return {
     id: f.id,
     nombre: f.nombre,
     activo: f.activo,
-    precioVenta: f.precio_venta === null || f.precio_venta === undefined ? null : Number(f.precio_venta),
+    precioVenta,
     categoriaId: f.categoria_id ?? null,
     // Sin configuración: visible con orden 0 (Req 14.6)
     visibleCaja: f.visible_caja ?? true,
     ordenCaja: f.orden_caja ?? 0,
     imagenPath: f.imagen_path ?? null,
+    ventaPorMonto,
+    promocion: promocion ?? promocionPorDefecto(f.nombre, precioVenta),
   };
 }
 
@@ -322,41 +357,203 @@ export async function guardarConfig(clave: ClaveConfigCaja | string, valor: stri
 
 // ---- Productos en Caja (Req 14.6, 14.13) ----
 
+export const CLAVE_PRODUCTOS_VENTA_MONTO = 'productos_venta_por_monto';
+export const CLAVE_PRODUCTOS_PROMOCIONES = 'productos_promociones_caja';
+
+export type MapaVentaPorMonto = Record<string, boolean>;
+export type MapaPromociones = Record<string, PromocionConfigurable>;
+
+export async function leerMapaVentaPorMonto(): Promise<MapaVentaPorMonto> {
+  try {
+    const filas = await consultar<{ valor: string | null }[]>((s) =>
+      supabase
+        .from('configuracion')
+        .select('valor')
+        .eq('clave', CLAVE_PRODUCTOS_VENTA_MONTO)
+        .abortSignal(s),
+    );
+    const raw = filas?.[0]?.valor;
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const mapa: MapaVentaPorMonto = {};
+      for (const item of parsed) {
+        if (typeof item === 'string') mapa[item] = true;
+      }
+      return mapa;
+    }
+    if (parsed && typeof parsed === 'object') {
+      const mapa: MapaVentaPorMonto = {};
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof v === 'boolean') mapa[k] = v;
+      }
+      return mapa;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+async function guardarMapaVentaPorMonto(mapa: MapaVentaPorMonto): Promise<void> {
+  await guardarConfig(CLAVE_PRODUCTOS_VENTA_MONTO, JSON.stringify(mapa));
+}
+
+export async function leerMapaPromociones(): Promise<MapaPromociones> {
+  try {
+    const filas = await consultar<{ valor: string | null }[]>((s) =>
+      supabase
+        .from('configuracion')
+        .select('valor')
+        .eq('clave', CLAVE_PRODUCTOS_PROMOCIONES)
+        .abortSignal(s),
+    );
+    const raw = filas?.[0]?.valor;
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const mapa: MapaPromociones = {};
+    for (const [id, val] of Object.entries(parsed as Record<string, unknown>)) {
+      if (val && typeof val === 'object') {
+        const obj = val as Record<string, unknown>;
+        const cantidad = Number(obj.cantidad);
+        const precio = Number(obj.precio);
+        const activo = Boolean(obj.activo);
+        if (Number.isInteger(cantidad) && cantidad >= 1 && Number.isInteger(precio) && precio >= 1) {
+          mapa[id] = { activo, cantidad, precio };
+        }
+      }
+    }
+    return mapa;
+  } catch {
+    return {};
+  }
+}
+
+async function guardarMapaPromociones(mapa: MapaPromociones): Promise<void> {
+  await guardarConfig(CLAVE_PRODUCTOS_PROMOCIONES, JSON.stringify(mapa));
+}
+
+export function resolverVentaPorMonto(
+  id: string,
+  nombre: string,
+  mapa: MapaVentaPorMonto,
+): boolean {
+  if (id in mapa) return mapa[id];
+  return normalizarTexto(nombre) === 'pan de 400';
+}
+
+export function resolverPromocionConfigurable(
+  id: string,
+  nombre: string,
+  precioVenta: number | null,
+  mapa: MapaPromociones,
+): PromocionConfigurable {
+  if (id in mapa) return mapa[id];
+  return promocionPorDefecto(nombre, precioVenta);
+}
+
+export function resolverPromocionActiva(
+  id: string,
+  nombre: string,
+  precioVenta: number | null,
+  mapa: MapaPromociones,
+): PromocionProducto | null {
+  const cfg = resolverPromocionConfigurable(id, nombre, precioVenta, mapa);
+  if (!cfg.activo || cfg.cantidad < 1 || cfg.precio < 1) return null;
+  return { cantidad: cfg.cantidad, precio: cfg.precio };
+}
+
 /** Todos los productos que no son materia prima, activos o no. */
 export async function productosConfigurables(): Promise<ProductoConfigurable[]> {
-  const filas = await consultar<FilaProducto[]>((s) =>
-    supabase
-      .from('productos')
-      .select(COLUMNAS_PRODUCTO)
-      // tipo_producto NULL en filas antiguas cuenta como 'normal'
-      .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
-      .order('orden_caja', { ascending: true })
-      .order('nombre', { ascending: true })
-      .abortSignal(s),
-  );
-  return (filas ?? []).map(aProducto);
+  const [filas, mapaMonto, mapaPromos] = await Promise.all([
+    consultar<FilaProducto[]>((s) =>
+      supabase
+        .from('productos')
+        .select(COLUMNAS_PRODUCTO)
+        // tipo_producto NULL en filas antiguas cuenta como 'normal'
+        .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
+        .order('orden_caja', { ascending: true })
+        .order('nombre', { ascending: true })
+        .abortSignal(s),
+    ),
+    leerMapaVentaPorMonto(),
+    leerMapaPromociones(),
+  ]);
+  return (filas ?? []).map((f) => {
+    const pv = f.precio_venta === null || f.precio_venta === undefined ? null : Number(f.precio_venta);
+    return aProducto(
+      f,
+      resolverVentaPorMonto(f.id, f.nombre, mapaMonto),
+      resolverPromocionConfigurable(f.id, f.nombre, pv, mapaPromos),
+    );
+  });
 }
 
 export async function actualizarProductoCaja(
   id: string,
-  cambios: { visibleCaja?: boolean; ordenCaja?: number; categoriaId?: string | null },
+  cambios: {
+    visibleCaja?: boolean;
+    ordenCaja?: number;
+    categoriaId?: string | null;
+    ventaPorMonto?: boolean;
+    promocion?: PromocionConfigurable;
+  },
 ): Promise<ProductoConfigurable> {
+  const [mapaMonto, mapaPromos] = await Promise.all([
+    leerMapaVentaPorMonto(),
+    leerMapaPromociones(),
+  ]);
+
+  if (cambios.ventaPorMonto !== undefined) {
+    mapaMonto[id] = cambios.ventaPorMonto;
+    await guardarMapaVentaPorMonto(mapaMonto);
+  }
+
+  if (cambios.promocion !== undefined) {
+    mapaPromos[id] = {
+      activo: Boolean(cambios.promocion.activo),
+      cantidad: Math.max(1, Math.round(cambios.promocion.cantidad)),
+      precio: Math.max(1, Math.round(cambios.promocion.precio)),
+    };
+    await guardarMapaPromociones(mapaPromos);
+  }
+
   const fila: Record<string, unknown> = {};
   if (cambios.visibleCaja !== undefined) fila.visible_caja = cambios.visibleCaja;
   if (cambios.ordenCaja !== undefined) fila.orden_caja = cambios.ordenCaja;
   if (cambios.categoriaId !== undefined) fila.categoria_id = cambios.categoriaId;
 
-  const resultado = await consultar<FilaProducto>((s) =>
-    supabase
-      .from('productos')
-      .update(fila)
-      .eq('id', id)
-      .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
-      .select(COLUMNAS_PRODUCTO)
-      .abortSignal(s)
-      .single(),
+  const resultado =
+    Object.keys(fila).length === 0
+      ? await consultar<FilaProducto>((s) =>
+          supabase
+            .from('productos')
+            .select(COLUMNAS_PRODUCTO)
+            .eq('id', id)
+            .abortSignal(s)
+            .single(),
+        )
+      : await consultar<FilaProducto>((s) =>
+          supabase
+            .from('productos')
+            .update(fila)
+            .eq('id', id)
+            .or('tipo_producto.is.null,tipo_producto.neq.materia_prima')
+            .select(COLUMNAS_PRODUCTO)
+            .abortSignal(s)
+            .single(),
+        );
+
+  const pv =
+    resultado.precio_venta === null || resultado.precio_venta === undefined
+      ? null
+      : Number(resultado.precio_venta);
+  return aProducto(
+    resultado,
+    resolverVentaPorMonto(id, resultado.nombre, mapaMonto),
+    resolverPromocionConfigurable(id, resultado.nombre, pv, mapaPromos),
   );
-  return aProducto(resultado);
 }
 
 const CLAVE_CATEGORIAS_INACTIVAS = 'categorias_producto_inactivas';

@@ -6,6 +6,11 @@ type FilaProducto = Database['public']['Tables']['productos']['Row'];
 /** Campos de `productos` que deciden si un producto se vende en Caja. */
 export type ProductoBD = Pick<FilaProducto, 'activo' | 'tipo_producto' | 'visible_caja'>;
 
+export type PromocionProducto = {
+  cantidad: number;
+  precio: number;
+};
+
 export type ProductoCaja = {
   id: string;
   nombre: string;
@@ -13,6 +18,8 @@ export type ProductoCaja = {
   categoriaId: string | null;
   imagenUrl: string | null;
   orden: number | null;
+  ventaPorMonto?: boolean;
+  promocion?: PromocionProducto | null;
 };
 
 // Se construye con RegExp porque el target ES2017 no acepta \p{...} en literales.

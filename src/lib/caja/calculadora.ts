@@ -33,6 +33,7 @@ export type AvisoCalculadora = 'VALOR_MAXIMO' | 'VALORES_MAXIMOS' | 'TOTAL_MAXIM
 export type AccionCalculadora =
   | { tipo: 'tecla'; tecla: TeclaCalculadora }
   | { tipo: 'agregar' }
+  | { tipo: 'agregar_valor'; valor: number }
   | { tipo: 'quitar'; id: number }
   | { tipo: 'vaciar' };
 
@@ -89,6 +90,19 @@ export function reducirCalculadora(
       const aviso = avisoAgregar(e, e.digitado);
       if (aviso) return { estado: e, aviso };
       return { estado: agregarDigitado(e) };
+    }
+    case 'agregar_valor': {
+      const v = Math.round(a.valor);
+      if (v <= 0 || v > VALOR_MAX) return { estado: e, aviso: 'VALOR_MAXIMO' };
+      const aviso = avisoAgregar(e, v);
+      if (aviso) return { estado: e, aviso };
+      return {
+        estado: {
+          ...e,
+          valores: [...e.valores, { id: e.siguienteId, valor: v }],
+          siguienteId: e.siguienteId + 1,
+        },
+      };
     }
     case 'quitar': {
       if (!e.valores.some((v) => v.id === a.id)) return { estado: e };

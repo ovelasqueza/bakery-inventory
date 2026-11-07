@@ -11,8 +11,10 @@ import { totalValores, type ValorLista } from '@/lib/caja/calculadora';
 import {
   CANTIDAD_MAX,
   articulosCarrito,
+  descomponerCantidadConPromo,
   parsearCantidad,
   subtotalLinea,
+  tienePromoAplicada,
   totalCarrito,
   type AccionCarrito,
   type Carrito,
@@ -247,7 +249,23 @@ function LineaPedido({
             {nombre}
           </h4>
           {!sinPrecio && (
-            <p className="text-xs text-lz-charcoal-muted">{formatCurrency(precio)} c/u</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="text-xs text-lz-charcoal-muted">{formatCurrency(precio)} c/u</p>
+              {tienePromoAplicada(linea) &&
+                linea.promocion &&
+                (() => {
+                  const d = descomponerCantidadConPromo(linea.cantidad, linea.precio, linea.promocion);
+                  const textoBadge =
+                    d.unidadesNormales > 0
+                      ? `Promo ${d.unidadesPromo} (${formatCurrency(d.subtotalPromo)}) + ${d.unidadesNormales} (${formatCurrency(d.subtotalNormal)})`
+                      : `Promo ${d.unidadesPromo} × ${formatCurrency(d.subtotalPromo)}`;
+                  return (
+                    <span className="inline-flex items-center rounded-md bg-lz-amber-light px-1.5 py-0.5 text-[11px] font-bold text-lz-amber">
+                      {textoBadge}
+                    </span>
+                  );
+                })()}
+            </div>
           )}
         </div>
         {!sinPrecio && (

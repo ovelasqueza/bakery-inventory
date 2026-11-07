@@ -12,6 +12,8 @@ interface CuadriculaProductosProps {
   /** Cantidad en la lista activa por id de producto. */
   cantidades?: Map<string, number>;
   onAgregar: (producto: ProductoCaja) => void;
+  /** Abre el popup de venta rápida por dinero ($) o promoción desde el botón superior izquierdo. */
+  onAbrirPorMonto?: (producto: ProductoCaja) => void;
   /** Espacio libre al final del scroll, en px, para que el botón flotante no tape la última fila (Req 4.6). */
   reservaInferior?: number;
   /** Lista a la que suman las tarjetas; por defecto 'venta' (modo-autoconsumo Req 2.2-2.5). */
@@ -23,6 +25,7 @@ export function CuadriculaProductos({
   columnas,
   cantidades,
   onAgregar,
+  onAbrirPorMonto,
   reservaInferior,
   modo = 'venta',
 }: CuadriculaProductosProps) {
@@ -42,7 +45,13 @@ export function CuadriculaProductos({
       >
         {productos.map((p) => (
           <li key={p.id} className="flex">
-            <TarjetaProducto producto={p} cantidad={cantidades?.get(p.id) ?? 0} onAgregar={onAgregar} modo={modo} />
+            <TarjetaProducto
+              producto={p}
+              cantidad={cantidades?.get(p.id) ?? 0}
+              onAgregar={onAgregar}
+              onAbrirPorMonto={onAbrirPorMonto}
+              modo={modo}
+            />
           </li>
         ))}
       </ul>

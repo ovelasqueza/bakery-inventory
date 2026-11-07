@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
+import { subtotalLinea } from '@/lib/caja/carrito';
 import { RECIBIDO_MAX, firmaPedido, pedidoVacio, totalPedido, type PedidoCobro } from '@/lib/caja/cobro';
 import { registrarVenta, registrarVentaValor, type VentaRegistrada } from '@/lib/api/ventas';
 import { ErrorApp } from '@/lib/api/errores';
@@ -131,7 +132,13 @@ export function PanelCobro({
       const venta = tieneProductos
         ? await registrarVenta({
             ...base,
-            lineas: pedido.carrito.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad, precio: l.precio })),
+            lineas: pedido.carrito.map((l) => ({
+              productoId: l.productoId,
+              cantidad: l.cantidad,
+              precio: l.precio,
+              subtotal: subtotalLinea(l),
+              promocion: l.promocion ?? null,
+            })),
             valores,
           })
         : await registrarVentaValor({ ...base, valores });

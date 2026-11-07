@@ -15,6 +15,8 @@ interface TarjetaProductoProps {
   /** Cantidad del producto en la lista activa (0 o ausente: no está). */
   cantidad?: number;
   onAgregar: (producto: ProductoCaja) => void;
+  /** Abre el popup de venta rápida por dinero ($) o promoción desde el botón superior izquierdo. */
+  onAbrirPorMonto?: (producto: ProductoCaja) => void;
   /** Por defecto 'venta' (sin cambios). */
   modo?: ModoLista;
 }
@@ -40,54 +42,79 @@ function etiquetaTarjeta(nombre: string, precio: string, cantidad: number, modo:
   return cantidad > 0 ? `Agregar ${nombre}, ${precio}. En el carrito: ${cantidad}` : `Agregar ${nombre}, ${precio}`;
 }
 
-export function TarjetaProducto({ producto, cantidad = 0, onAgregar, modo = 'venta' }: TarjetaProductoProps) {
+export function TarjetaProducto({
+  producto,
+  cantidad = 0,
+  onAgregar,
+  onAbrirPorMonto,
+  modo = 'venta',
+}: TarjetaProductoProps) {
   const precio = formatCurrency(producto.precio);
   const etiqueta = etiquetaTarjeta(producto.nombre, precio, cantidad, modo);
   const autoconsumo = modo === 'autoconsumo';
+  const mostrarBotonPopup =
+    !autoconsumo && Boolean(onAbrirPorMonto) && Boolean(producto.ventaPorMonto || producto.promocion);
 
   return (
-    <button
-      type="button"
-      onClick={() => onAgregar(producto)}
-      aria-label={etiqueta}
-      className={`group relative flex min-h-[44px] w-full min-w-[44px] select-none flex-col overflow-hidden rounded-2xl bg-lz-surface p-2 text-left shadow-lz-card transition duration-100 hover:shadow-lz-float focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-lz-linen active:scale-[0.97] ${CLASES_TARJETA[modo]}`}
-    >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-lz-oat">
-        <ImagenProducto nombre={producto.nombre} imagenUrl={producto.imagenUrl} />
-        {cantidad > 0 && (
-          <span
-            className={`absolute right-1.5 top-1.5 flex h-7 min-w-[28px] items-center justify-center rounded-full px-2 font-lz-display text-sm font-bold text-lz-surface shadow-lz-soft ${CLASES_INSIGNIA[modo]}`}
-            aria-hidden="true"
-          >
-            {cantidad}
+    <div className="relative flex w-full">
+      <button
+        type="button"
+        onClick={() => onAgregar(producto)}
+        aria-label={etiqueta}
+        className={`group relative flex min-h-[44px] w-full min-w-[44px] select-none flex-col overflow-hidden rounded-2xl bg-lz-surface p-2 text-left shadow-lz-card transition duration-100 hover:shadow-lz-float focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-lz-linen active:scale-[0.97] ${CLASES_TARJETA[modo]}`}
+      >
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-lz-oat">
+          <ImagenProducto nombre={producto.nombre} imagenUrl={producto.imagenUrl} />
+          {cantidad > 0 && (
+            <span
+              className={`absolute right-1.5 top-1.5 flex h-7 min-w-[28px] items-center justify-center rounded-full px-2 font-lz-display text-sm font-bold text-lz-surface shadow-lz-soft ${CLASES_INSIGNIA[modo]}`}
+              aria-hidden="true"
+            >
+              {cantidad}
+            </span>
+          )}
+        </div>
+
+        <span className="mt-2 line-clamp-2 min-h-[2.5rem] px-1 text-sm font-semibold leading-5 text-lz-charcoal">
+          {producto.nombre}
+        </span>
+
+        {autoconsumo ? (
+          <span className="mt-auto flex items-center justify-end gap-2 px-1 pb-0.5 pt-1">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-amber text-xl font-bold leading-none text-lz-charcoal transition-colors group-hover:bg-lz-amber-warm"
+              aria-hidden="true"
+            >
+              +
+            </span>
+          </span>
+        ) : (
+          <span className="mt-auto flex items-center justify-between gap-2 px-1 pb-0.5 pt-1">
+            <span className="truncate font-lz-display text-lg font-bold text-lz-sage-dark">{precio}</span>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-sage text-xl font-bold leading-none text-lz-surface transition-colors group-hover:bg-lz-sage-medium"
+              aria-hidden="true"
+            >
+              +
+            </span>
           </span>
         )}
-      </div>
+      </button>
 
-      <span className="mt-2 line-clamp-2 min-h-[2.5rem] px-1 text-sm font-semibold leading-5 text-lz-charcoal">
-        {producto.nombre}
-      </span>
-
-      {autoconsumo ? (
-        <span className="mt-auto flex items-center justify-end gap-2 px-1 pb-0.5 pt-1">
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-amber text-xl font-bold leading-none text-lz-charcoal transition-colors group-hover:bg-lz-amber-warm"
-            aria-hidden="true"
-          >
-            +
-          </span>
-        </span>
-      ) : (
-        <span className="mt-auto flex items-center justify-between gap-2 px-1 pb-0.5 pt-1">
-          <span className="truncate font-lz-display text-lg font-bold text-lz-sage-dark">{precio}</span>
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-sage text-xl font-bold leading-none text-lz-surface transition-colors group-hover:bg-lz-sage-medium"
-            aria-hidden="true"
-          >
-            +
-          </span>
-        </span>
+      {mostrarBotonPopup && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAbrirPorMonto?.(producto);
+          }}
+          title={`Vender ${producto.nombre} por dinero ($) o promoción`}
+          aria-label={`Abrir venta por dinero o promoción de ${producto.nombre}`}
+          className="absolute left-3.5 top-3.5 z-10 inline-flex min-h-[30px] items-center gap-1 rounded-xl border border-lz-surface/60 bg-lz-amber px-2.5 py-1 text-xs font-extrabold text-lz-surface shadow-lz-soft transition-transform hover:scale-105 hover:bg-lz-amber-warm active:scale-95"
+        >
+          <span>$ / und</span>
+        </button>
       )}
-    </button>
+    </div>
   );
 }
