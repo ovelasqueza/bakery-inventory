@@ -1,4 +1,5 @@
 import { llamarRpc } from '@/lib/api/errores';
+import { obtenerGastosTurnosCerradosActivos } from '@/lib/api/gastos';
 import { obtenerIdsGastosValesRespaldo } from '@/lib/api/vales';
 import { derivarUuidSecundario } from '@/lib/api/ventas';
 import type { Rango } from '@/lib/fechas/bogota';
@@ -221,12 +222,13 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
   const inicioIso = `${rango.desde}T00:00:00.000-05:00`;
   const finIso = `${rango.hasta}T23:59:59.999-05:00`;
 
-  const [data, idsValesRespaldo, resClaves] = await Promise.all([
+  const [data, idsValesRespaldo, gastosCerradosActivos, resClaves] = await Promise.all([
     llamarRpc<ReporteCrudo>('reporte_rango', {
       p_desde: rango.desde,
       p_hasta: rango.hasta,
     }),
     obtenerIdsGastosValesRespaldo().catch(() => new Set<string>()),
+    obtenerGastosTurnosCerradosActivos().catch(() => []),
     Promise.resolve(
       supabase
         .from('ventas')
@@ -287,10 +289,44 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
     }
   }
 
-  const gastos = idsValesRespaldo.size > 0 ? todosGastos.filter((g) => !idsValesRespaldo.has(g.id)) : todosGastos;
+  const gastosBase = idsValesRespaldo.size > 0 ? todosGastos.filter((g) => !idsValesRespaldo.has(g.id)) : todosGastos;
+  const msInicio = Date.parse(inicioIso);
+  const msFin = Date.parse(finIso);
+  const gastosExtraRango: GastoReporte[] = gastosCerradosActivos
+    .filter((g) => {
+      const t = Date.parse(g.creadoEn);
+      return t >= msInicio && t <= msFin;
+    })
+    .map((g) => ({
+      id: g.id,
+      creadoEn: g.creadoEn,
+      valor: Number(g.valor),
+      concepto: g.concepto,
+      categoriaGastoId: g.categoriaId,
+      registradoPor: g.registradoPor,
+      turnoId: g.turnoId,
+      origenes: [{ parteId: null, nombre: 'Cajón', valor: Number(g.valor) }],
+    }));
+
+  const gastosExtraPorTurno = new Map<string, number>();
+  for (const g of gastosCerradosActivos) {
+    gastosExtraPorTurno.set(g.turnoId, (gastosExtraPorTurno.get(g.turnoId) ?? 0) + Number(g.valor));
+  }
+
+  const gastos = [...gastosBase, ...gastosExtraRango];
   const turnos = (data.turnos ?? []).map(aTurno).map((t) => {
-    const restar = valesPorTurno.get(t.id) ?? 0;
-    return restar > 0 ? { ...t, totalGastos: Math.max(0, t.totalGastos - restar) } : t;
+    const restarVales = valesPorTurno.get(t.id) ?? 0;
+    const sumarGastosCerrados = gastosExtraPorTurno.get(t.id) ?? 0;
+    const nuevoTotalGastos = Math.max(0, t.totalGastos - restarVales) + sumarGastosCerrados;
+    const nuevoEsperado = t.efectivoEsperado - sumarGastosCerrados;
+    const nuevaDiferencia =
+      t.cerradoEn !== null && t.efectivoContado !== null ? t.efectivoContado - nuevoEsperado : t.diferencia;
+    return {
+      ...t,
+      totalGastos: nuevoTotalGastos,
+      efectivoEsperado: nuevoEsperado,
+      diferencia: nuevaDiferencia,
+    };
   });
 
   return {

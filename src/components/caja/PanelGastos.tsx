@@ -13,7 +13,7 @@ import { obtenerSaldos, type ParteCajaMayor } from '@/lib/api/cajaMayor';
 import { ErrorApp, parteDeError } from '@/lib/api/errores';
 import {
   eliminarGasto,
-  gastosDelTurno,
+  gastosPorRango,
   registrarGasto,
   type GastoTurno,
   type OrigenGasto,
@@ -23,13 +23,67 @@ import { resumenTurno } from '@/lib/api/turnos';
 import { textoOrigen, validarOrigenes, type ErrorOrigen } from '@/lib/caja/cajaMayor';
 import { parteCajon, requiereAdvertencia } from '@/lib/caja/turno';
 import { conMiles, validarEnteroEnRango, validarNombrePersona, validarTextoLargo } from '@/lib/caja/validacion';
-import { hora12 } from '@/lib/fechas/bogota';
+import { diaLocal, hora12, sumarDias, type Rango } from '@/lib/fechas/bogota';
 import { formatCurrency } from '@/lib/utils';
 
 const VALOR_MIN = 1;
 const VALOR_MAX = 10_000_000;
 const CONCEPTO_MAX = 120;
 const MENSAJE_NO_GUARDADO = 'No se guardó. Intente de nuevo.';
+
+type FiltroPeriodoGastos = 'hoy' | 'ayer' | '3d' | '7d' | '15d' | '30d';
+
+const OPCIONES_PERIODO: { id: FiltroPeriodoGastos; etiqueta: string }[] = [
+  { id: 'hoy', etiqueta: 'Hoy' },
+  { id: 'ayer', etiqueta: 'Ayer' },
+  { id: '3d', etiqueta: '3 días' },
+  { id: '7d', etiqueta: '7 días' },
+  { id: '15d', etiqueta: '15 días' },
+  { id: '30d', etiqueta: '1 mes' },
+];
+
+function rangoDeFiltro(filtro: FiltroPeriodoGastos, ahora: Date = new Date()): Rango {
+  const hoy = diaLocal(ahora);
+  switch (filtro) {
+    case 'hoy':
+      return { desde: hoy, hasta: hoy };
+    case 'ayer': {
+      const ayer = sumarDias(hoy, -1);
+      return { desde: ayer, hasta: ayer };
+    }
+    case '3d':
+      return { desde: sumarDias(hoy, -2), hasta: hoy };
+    case '7d':
+      return { desde: sumarDias(hoy, -6), hasta: hoy };
+    case '15d':
+      return { desde: sumarDias(hoy, -14), hasta: hoy };
+    case '30d':
+      return { desde: sumarDias(hoy, -29), hasta: hoy };
+  }
+}
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as const;
+
+function etiquetaDia(diaIso: string, ahora: Date = new Date()): string {
+  const hoy = diaLocal(ahora);
+  const ayer = sumarDias(hoy, -1);
+  const partes = diaIso.split('-');
+  if (partes.length !== 3) return diaIso;
+  const [y, m, d] = partes.map(Number);
+  const fechaUtc = new Date(Date.UTC(y, m - 1, d));
+  const nombreDia = DIAS_SEMANA[fechaUtc.getUTCDay()] ?? '';
+  const corta = `${partes[2]}/${partes[1]}/${partes[0]}`;
+  if (diaIso === hoy) return `Hoy · ${nombreDia} ${corta}`;
+  if (diaIso === ayer) return `Ayer · ${nombreDia} ${corta}`;
+  return `${nombreDia} ${corta}`;
+}
+
+interface GrupoDiaGastos {
+  dia: string;
+  etiqueta: string;
+  totalDia: number;
+  items: GastoTurno[];
+}
 
 interface PanelGastosProps {
   turnoId: string;
@@ -118,6 +172,8 @@ export function PanelGastos({
   const [errorSaldos, setErrorSaldos] = useState(false);
 
   const [gastos, setGastos] = useState<GastoTurno[]>([]);
+  const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodoGastos>('hoy');
+  const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [errorLista, setErrorLista] = useState<string | null>(null);
 
@@ -164,7 +220,7 @@ export function PanelGastos({
     setCargando(true);
     setErrorLista(null);
     try {
-      const lista = await gastosDelTurno(turnoId);
+      const lista = await gastosPorRango(rangoDeFiltro(filtroPeriodo));
       // Más reciente primero (Req 8.6).
       lista.sort((a, b) => Date.parse(b.creadoEn) - Date.parse(a.creadoEn));
       setGastos(lista);
@@ -177,7 +233,7 @@ export function PanelGastos({
     } finally {
       setCargando(false);
     }
-  }, [turnoId, turnoCerrado]);
+  }, [filtroPeriodo, turnoCerrado]);
 
   useEffect(() => {
     void cargarGastos();
@@ -303,7 +359,39 @@ export function PanelGastos({
     else void eliminar(f.gastoId);
   }
 
-  const total = gastos.reduce((s, g) => s + g.valor, 0);
+  const gastosFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return gastos;
+    return gastos.filter(
+      (g) =>
+        g.concepto.toLowerCase().includes(q) ||
+        g.categoriaNombre.toLowerCase().includes(q) ||
+        g.registradoPor.toLowerCase().includes(q)
+    );
+  }, [gastos, busqueda]);
+
+  const gruposPorDia = useMemo<GrupoDiaGastos[]>(() => {
+    const mapa = new Map<string, GrupoDiaGastos>();
+    const ahora = new Date();
+    for (const g of gastosFiltrados) {
+      const dia = diaLocal(g.creadoEn);
+      let grupo = mapa.get(dia);
+      if (!grupo) {
+        grupo = {
+          dia,
+          etiqueta: etiquetaDia(dia, ahora),
+          totalDia: 0,
+          items: [],
+        };
+        mapa.set(dia, grupo);
+      }
+      grupo.totalDia += g.valor;
+      grupo.items.push(g);
+    }
+    return Array.from(mapa.values()).sort((a, b) => (a.dia < b.dia ? 1 : a.dia > b.dia ? -1 : 0));
+  }, [gastosFiltrados]);
+
+  const total = gastosFiltrados.reduce((s, g) => s + g.valor, 0);
   const ocupado = guardando || eliminando;
 
   // Esc cierra primero la confirmación abierta y luego la ventana.
@@ -328,7 +416,7 @@ export function PanelGastos({
         if (e.target === e.currentTarget && !ocupado) onCerrar();
       }}
     >
-      <div className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
+      <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
       <header className="flex items-center justify-between gap-3 border-b border-lz-border bg-lz-surface px-5 py-3">
         <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
           Gastos/Pedidos del turno
@@ -496,14 +584,55 @@ export function PanelGastos({
           aria-label="Gastos registrados"
           className="flex flex-col rounded-3xl border border-lz-border bg-lz-surface shadow-lz-card"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-lz-border px-5 py-4">
-            <h3 className="font-lz-display text-lg font-bold text-lz-charcoal">Gastos registrados</h3>
-            <p className="text-right">
-              <span className="block text-xs font-medium uppercase tracking-wide text-lz-charcoal-muted">Total</span>
-              <span className="font-lz-display text-2xl font-bold tabular-nums text-lz-charcoal">
-                {formatCurrency(total)}
-              </span>
-            </p>
+          <div className="flex flex-col gap-3 border-b border-lz-border px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-lz-display text-lg font-bold text-lz-charcoal">Gastos registrados</h3>
+                <p className="text-xs font-medium text-lz-charcoal-muted">
+                  {`${gastosFiltrados.length} gastos en ${gruposPorDia.length} ${gruposPorDia.length === 1 ? 'día' : 'días'}`}
+                </p>
+              </div>
+              <p className="text-right">
+                <span className="block text-xs font-medium uppercase tracking-wide text-lz-charcoal-muted">
+                  Total general
+                </span>
+                <span className="font-lz-display text-2xl font-bold tabular-nums text-lz-charcoal">
+                  {formatCurrency(total)}
+                </span>
+              </p>
+            </div>
+
+            {/* Atajos de días anteriores hasta 1 mes (todos los turnos) */}
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar gastos por período">
+              {OPCIONES_PERIODO.map((op) => {
+                const activo = filtroPeriodo === op.id;
+                return (
+                  <button
+                    key={op.id}
+                    type="button"
+                    aria-pressed={activo}
+                    onClick={() => setFiltroPeriodo(op.id)}
+                    className={`min-h-[38px] rounded-xl border px-3 py-1 text-sm font-semibold transition-colors ${
+                      activo
+                        ? 'border-lz-sage bg-lz-sage text-lz-surface'
+                        : 'border-lz-border bg-lz-linen text-lz-charcoal hover:border-lz-sage-medium hover:bg-lz-sage-light'
+                    }`}
+                  >
+                    {op.etiqueta}
+                  </button>
+                );
+              })}
+            </div>
+
+            {gastos.length > 0 && (
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por concepto, categoría o persona…"
+                className="min-h-[42px] w-full rounded-xl border border-lz-border bg-lz-linen px-3.5 text-sm text-lz-charcoal placeholder:text-lz-charcoal-muted focus:border-lz-sage focus:bg-lz-surface focus:outline-none"
+              />
+            )}
           </div>
 
           {falloConexion?.tipo === 'lista' && (
@@ -529,50 +658,103 @@ export function PanelGastos({
           <div className="min-h-0 flex-1 overflow-y-auto">
             {cargando && gastos.length === 0 ? (
               <p className="px-5 py-6 text-base text-lz-charcoal-muted">Cargando gastos…</p>
-            ) : gastos.length === 0 ? (
-              <p className="px-5 py-6 text-base text-lz-charcoal-muted">Todavía no hay gastos en este turno.</p>
+            ) : gastosFiltrados.length === 0 ? (
+              <p className="px-5 py-6 text-base text-lz-charcoal-muted">
+                {busqueda.trim()
+                  ? 'No se encontraron gastos con esa búsqueda.'
+                  : 'No hay gastos registrados en este período.'}
+              </p>
             ) : (
-              <ul className="divide-y divide-lz-border">
-                {gastos.map((g) => (
-                  <li key={g.id} className="flex items-center gap-3 px-5 py-3">
-                    <span className="w-[4.75rem] shrink-0 whitespace-nowrap font-semibold tabular-nums text-lz-charcoal-muted">
-                      {hora12(g.creadoEn)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="break-words text-base font-semibold text-lz-charcoal">{g.concepto}</p>
-                      <p className="text-sm text-lz-charcoal-muted">
-                        {g.categoriaNombre} · {textoOrigen(g.origenes, nombresPartes, formatCurrency)}
-                      </p>
+              <div className="flex flex-col divide-y divide-lz-border">
+                {gruposPorDia.map((grupo) => (
+                  <div key={grupo.dia} className="flex flex-col">
+                    {/* Encabezado de cada día con su Total del día */}
+                    <div className="flex items-center justify-between gap-3 bg-lz-linen px-5 py-2.5 border-b border-lz-border">
+                      <div className="flex items-center gap-2">
+                        <span className="font-lz-display text-sm font-bold text-lz-charcoal">
+                          {grupo.etiqueta}
+                        </span>
+                        <span className="rounded-full bg-lz-surface px-2 py-0.5 text-xs font-semibold text-lz-charcoal-muted border border-lz-border">
+                          {grupo.items.length} {grupo.items.length === 1 ? 'gasto' : 'gastos'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="mr-1.5 text-xs font-semibold uppercase tracking-wide text-lz-charcoal-muted">
+                          Total día:
+                        </span>
+                        <span className="font-lz-display text-base font-bold tabular-nums text-lz-sage-dark">
+                          {formatCurrency(grupo.totalDia)}
+                        </span>
+                      </div>
                     </div>
-                    <span className="shrink-0 font-lz-display text-lg font-bold tabular-nums text-lz-charcoal">
-                      {formatCurrency(g.valor)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setErrorEliminar(null);
-                        setPorEliminar(g);
-                      }}
-                      disabled={ocupado}
-                      aria-label={`Eliminar gasto ${g.concepto}`}
-                      className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border-2 border-lz-danger-border text-lz-danger transition-colors hover:bg-lz-danger-surface disabled:opacity-50"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
-                      </svg>
-                    </button>
-                  </li>
+
+                    <ul className="divide-y divide-lz-border">
+                      {grupo.items.map((g) => {
+                        const esDeEsteTurno = g.turnoId === turnoId && !g.esDeTurnoCerrado;
+                        return (
+                          <li key={g.id} className="flex items-center gap-3 px-5 py-3">
+                            <span className="w-[4.75rem] shrink-0 whitespace-nowrap text-sm font-semibold tabular-nums text-lz-charcoal-muted">
+                              {hora12(g.creadoEn)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="break-words text-base font-semibold text-lz-charcoal">{g.concepto}</p>
+                                {g.registradoPor && (
+                                  <span className="inline-flex items-center rounded-lg border border-lz-border bg-lz-linen px-2 py-0.5 text-xs font-bold text-lz-charcoal">
+                                    Registró: {g.registradoPor}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-lz-charcoal-muted">
+                                {g.categoriaNombre} · {textoOrigen(g.origenes, nombresPartes, formatCurrency)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 font-lz-display text-lg font-bold tabular-nums text-lz-charcoal">
+                              {formatCurrency(g.valor)}
+                            </span>
+                            {esDeEsteTurno && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setErrorEliminar(null);
+                                  setPorEliminar(g);
+                                }}
+                                disabled={ocupado}
+                                aria-label={`Eliminar gasto ${g.concepto}`}
+                                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border-2 border-lz-danger-border text-lz-danger transition-colors hover:bg-lz-danger-surface disabled:opacity-50"
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 24 24"
+                                  className="h-5 w-5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                                </svg>
+                              </button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+
+                {gruposPorDia.length > 1 && (
+                  <div className="flex items-center justify-between gap-3 bg-lz-sage-light/60 px-5 py-3.5">
+                    <span className="font-lz-display text-base font-bold text-lz-charcoal">
+                      Total general ({gruposPorDia.length} días · {gastosFiltrados.length} gastos)
+                    </span>
+                    <span className="font-lz-display text-xl font-bold tabular-nums text-lz-charcoal">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </section>

@@ -264,6 +264,11 @@ function ContenidoReporte({ seccion, reporte, cargando, error, onReintentar }: C
     );
   }
 
+  // En Gastos siempre se muestra SeccionGastos para que el Admin pueda registrar un gasto olvidado en turno cerrado
+  if (seccion === 'gastos') {
+    return <SeccionGastos reporte={reporte} onCambio={onReintentar} />;
+  }
+
   // Req 12.10: Turnos puede seguir mostrando turnos abiertos sin ventas ni gastos
   // (seccionVacia nunca la considera vacía). Autoconsumo: barra-acciones-caja Req 12.6.
   if (seccionVacia(reporte, seccion)) return <EstadoVacioReporte />;
@@ -277,8 +282,6 @@ function ContenidoReporte({ seccion, reporte, cargando, error, onReintentar }: C
       return <SeccionProductos reporte={reporte} />;
     case 'turnos':
       return <SeccionTurnos reporte={reporte} />;
-    case 'gastos':
-      return <SeccionGastos reporte={reporte} />;
     case 'metodos':
       return <SeccionMetodos reporte={reporte} />;
     case 'autoconsumo':

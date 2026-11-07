@@ -70,7 +70,7 @@ function diaAMs(dia: string): number | null {
   return ms;
 }
 
-function sumarDias(dia: string, n: number): string {
+export function sumarDias(dia: string, n: number): string {
   const ms = diaAMs(dia);
   if (ms === null) throw new Error(`Fecha inválida: ${dia}`);
   return formatearDia(new Date(ms + n * DIA_MS));
