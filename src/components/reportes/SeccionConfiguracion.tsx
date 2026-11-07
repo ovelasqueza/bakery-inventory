@@ -7,7 +7,6 @@ import { ConfigMetodosPago } from './ConfigMetodosPago';
 import { ConfigCategoriasGasto } from './ConfigCategoriasGasto';
 import { ConfigCategoriasProducto } from './ConfigCategoriasProducto';
 import { ConfigPersonas } from './ConfigPersonas';
-import { ConfigBaseCaja } from './ConfigBaseCaja';
 import { ConfigCajon } from './ConfigCajon';
 import { ConfigProductosCaja } from './ConfigProductosCaja';
 import { ConfigPin } from './ConfigPin';
@@ -25,8 +24,7 @@ export function SeccionConfiguracion() {
         <ConfigCategoriasGasto />
         <ConfigCategoriasProducto onCambio={alCambiarCategorias} />
         <ConfigPersonas />
-        <div className="flex flex-col gap-4 lg:col-span-2 lg:grid lg:grid-cols-2">
-          <ConfigBaseCaja />
+        <div className="lg:col-span-2">
           <ConfigCajon />
         </div>
       </div>

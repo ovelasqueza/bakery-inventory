@@ -371,6 +371,8 @@ export function construirReporte(d: DatosReporte): Reporte {
   const turnos = d.turnos
     .map((t): FilaTurno => {
       const abierto = t.cerradoEn === null;
+      const efectivoEsperado = t.efectivoEsperado - t.base;
+      const diferencia = abierto || t.efectivoContado === null ? null : t.efectivoContado - efectivoEsperado;
       return {
         id: t.id,
         estado: abierto ? 'Abierto' : 'Cerrado',
@@ -378,7 +380,7 @@ export function construirReporte(d: DatosReporte): Reporte {
         abiertoEn: t.abiertoEn,
         cerradoPor: abierto ? null : t.cerradoPor,
         cerradoEn: abierto ? null : t.cerradoEn,
-        base: t.base,
+        base: 0,
         porMetodo: t.porMetodo.map((m) => ({
           metodoPagoId: m.metodoPagoId,
           nombre: nombreMetodo.get(m.metodoPagoId) ?? SIN_NOMBRE,
@@ -387,9 +389,9 @@ export function construirReporte(d: DatosReporte): Reporte {
         totalVentas: t.porMetodo.reduce((s, m) => s + m.total, 0),
         totalGastos: t.totalGastos,
         totalRetiros: t.totalRetiros,
-        efectivoEsperado: t.efectivoEsperado,
+        efectivoEsperado,
         efectivoContado: abierto ? null : t.efectivoContado,
-        diferencia: abierto ? null : t.diferencia,
+        diferencia,
         baseSiguiente: abierto ? null : t.baseSiguiente,
         enviadoMayor: abierto ? null : t.enviadoMayor,
       };

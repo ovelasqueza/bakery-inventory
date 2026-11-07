@@ -143,7 +143,6 @@ function turnos(r: Reporte, f: Formato): Tabla[] {
         'Apertura',
         'Cerró',
         'Cierre',
-        'Base',
         ...metodos.map((m) => m.nombre),
         'Total ventas',
         'Gastos',
@@ -151,7 +150,6 @@ function turnos(r: Reporte, f: Formato): Tabla[] {
         'Efectivo esperado',
         'Efectivo contado',
         'Diferencia',
-        'Base dejada',
         'Enviado a caja mayor',
       ],
       filas: r.turnos.map((t) => {
@@ -163,7 +161,6 @@ function turnos(r: Reporte, f: Formato): Tabla[] {
           fecha(t.abiertoEn, f),
           abierto ? null : t.cerradoPor,
           abierto ? null : fecha(t.cerradoEn, f),
-          monto(t.base, f),
           ...metodos.map((m) => monto(porMetodo.get(m.id) ?? 0, f)),
           monto(t.totalVentas, f),
           monto(t.totalGastos, f),
@@ -171,8 +168,6 @@ function turnos(r: Reporte, f: Formato): Tabla[] {
           monto(t.efectivoEsperado, f),
           abierto ? null : monto(t.efectivoContado, f),
           abierto ? null : monto(t.diferencia, f),
-          // Vacías en abiertos y en cerrados antes de la Caja mayor (Req 9.4).
-          abierto ? null : monto(t.baseSiguiente, f),
           abierto ? null : monto(t.enviadoMayor, f),
         ];
       }),

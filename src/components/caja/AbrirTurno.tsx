@@ -1,19 +1,18 @@
 'use client';
 
-// Pantalla de apertura de turno: solo Persona_Caja; la base la pone el servidor (Req 2.3, 2.4, 17.7, 17.8).
+// Pantalla de apertura de turno: solo Persona_Caja (sin base en cajón).
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { LogoLizpan } from '@/components/marca/LogoLizpan';
 import { useToast } from '@/components/ui';
 import { SelectorPersona } from '@/components/caja/SelectorPersona';
 import { AvisoSinConexion } from '@/components/caja/AvisoSinConexion';
 import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
-import { abrirTurno, baseProximoTurno, type TurnoAbierto } from '@/lib/api/turnos';
+import { abrirTurno, type TurnoAbierto } from '@/lib/api/turnos';
 import { ErrorApp } from '@/lib/api/errores';
 import type { PersonaCajaParam } from '@/lib/api/parametros';
 import { validarNombrePersona } from '@/lib/caja/validacion';
 import { hora12 } from '@/lib/fechas/bogota';
-import { formatCurrency } from '@/lib/utils';
 
 interface AbrirTurnoProps {
   personas: PersonaCajaParam[];
@@ -27,8 +26,6 @@ const MENSAJES_NOMBRE = {
   LARGO: 'El nombre puede tener hasta 60 letras.',
 } as const;
 
-type EstadoBase = { tipo: 'cargando' } | { tipo: 'lista'; valor: number } | { tipo: 'error' };
-
 export function AbrirTurno({ personas, onAbierto, abrirCajon }: AbrirTurnoProps) {
   const { showToast } = useToast();
 
@@ -37,22 +34,6 @@ export function AbrirTurno({ personas, onAbierto, abrirCajon }: AbrirTurnoProps)
   const [errorEnvio, setErrorEnvio] = useState<'SIN_CONEXION' | 'OTRO' | null>(null);
   const [enviando, setEnviando] = useState(false);
   const enviandoRef = useRef(false);
-  const [base, setBase] = useState<EstadoBase>({ tipo: 'cargando' });
-
-  // Solo se muestra (Req 2.3); el servidor la vuelve a calcular al abrir. Si falla, no bloquea la apertura.
-  useEffect(() => {
-    let activo = true;
-    baseProximoTurno()
-      .then((valor) => {
-        if (activo) setBase({ tipo: 'lista', valor });
-      })
-      .catch(() => {
-        if (activo) setBase({ tipo: 'error' });
-      });
-    return () => {
-      activo = false;
-    };
-  }, []);
 
   // Misma clave mientras no cambie la persona: un reintento no abre otro turno (Req 17.8).
   const { clave, renovar } = useClaveIdempotente(persona.trim());
@@ -119,27 +100,6 @@ export function AbrirTurno({ personas, onAbierto, abrirCajon }: AbrirTurnoProps)
           error={errorPersona}
           disabled={enviando}
         />
-
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex flex-col gap-1 rounded-2xl border border-lz-border bg-lz-linen px-4 py-3"
-        >
-          <span className="font-lz-display text-base font-semibold text-lz-charcoal">Base en el cajón</span>
-          {base.tipo === 'cargando' && (
-            <span className="text-base text-lz-charcoal-muted">Cargando base…</span>
-          )}
-          {base.tipo === 'lista' && (
-            <span className="font-lz-display text-3xl font-bold text-lz-charcoal">
-              {formatCurrency(base.valor)}
-            </span>
-          )}
-          {base.tipo === 'error' && (
-            <span className="text-base text-lz-charcoal-muted">
-              No se pudo cargar la base. Puede abrir el turno igual; la base la pone el sistema.
-            </span>
-          )}
-        </div>
 
         {errorEnvio === 'SIN_CONEXION' && (
           <AvisoSinConexion

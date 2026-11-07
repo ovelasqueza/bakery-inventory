@@ -1,6 +1,6 @@
 'use client';
 
-// Cierre a ciegas: efectivo contado, base para el siguiente turno y Persona_Caja.
+// Cierre a ciegas: efectivo contado y Persona_Caja (sin base para el siguiente turno).
 // No muestra esperado, totales ni diferencia (Req 1.1-1.3, 1.7, 1.8).
 
 import { useId, useRef, useState, type FormEvent } from 'react';
@@ -10,8 +10,7 @@ import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
 import { ErrorApp } from '@/lib/api/errores';
 import type { PersonaCajaParam } from '@/lib/api/parametros';
 import { cerrarTurno, type Cierre } from '@/lib/api/turnos';
-import { calcularCierre } from '@/lib/caja/turno';
-import { conMiles, textoMiles, validarEnteroEnRango, validarNombrePersona } from '@/lib/caja/validacion';
+import { conMiles, validarEnteroEnRango, validarNombrePersona } from '@/lib/caja/validacion';
 import { hora12 } from '@/lib/fechas/bogota';
 import { formatCurrency } from '@/lib/utils';
 
@@ -20,8 +19,8 @@ const CONTADO_MAX = 99_999_999;
 interface CierreTurnoProps {
   turnoId: string;
   personas: PersonaCajaParam[];
-  /** Valor inicial de la base para el siguiente turno (Base_Caja_Defecto, Req 1.2). */
-  baseDefecto: number;
+  /** Prop opcional mantenida por compatibilidad (la base ahora siempre se guarda como 0). */
+  baseDefecto?: number;
   /** Vuelve a ventas sin registrar nada. */
   onCancelar: () => void;
   onCerrado: (cierre: Cierre) => void;
@@ -42,21 +41,9 @@ const MENSAJES_CONTADO = {
   RANGO: `El efectivo debe estar entre ${formatCurrency(0)} y ${formatCurrency(CONTADO_MAX)}.`,
 } as const;
 
-const MENSAJES_BASE = {
-  VACIO: 'Escriba la base que se deja (puede ser 0).',
-  NO_ENTERO: 'Escriba solo números enteros, sin comas ni decimales.',
-  RANGO: `La base debe estar entre ${formatCurrency(0)} y ${formatCurrency(CONTADO_MAX)}.`,
-  BASE_MAYOR_CONTADO: 'La base no puede ser mayor que el efectivo contado.',
-} as const;
-
-function textoInicialBase(baseDefecto: number): string {
-  return Number.isInteger(baseDefecto) && baseDefecto >= 0 ? textoMiles(baseDefecto) : '0';
-}
-
 export function CierreTurno({
   turnoId,
   personas,
-  baseDefecto,
   onCancelar,
   onCerrado,
   onYaCerrado,
@@ -65,44 +52,35 @@ export function CierreTurno({
   const idTitulo = useId();
   const idContado = useId();
   const idErrorContado = useId();
-  const idBase = useId();
-  const idErrorBase = useId();
 
   const [contado, setContado] = useState('');
-  const [base, setBase] = useState(() => textoInicialBase(baseDefecto));
   const [persona, setPersona] = useState('');
   const [errorContado, setErrorContado] = useState<string | null>(null);
-  const [errorBase, setErrorBase] = useState<string | null>(null);
   const [errorPersona, setErrorPersona] = useState<string | null>(null);
   const [errorEnvio, setErrorEnvio] = useState<'SIN_CONEXION' | 'OTRO' | null>(null);
   const [enviando, setEnviando] = useState(false);
   const enviandoRef = useRef(false);
   const [yaCerrado, setYaCerrado] = useState<{ cerradoPor: string; cerradoEn: string } | null>(null);
 
-  // Misma clave mientras no cambien contado, base y persona: un reintento no registra otro cierre (Req 1.8).
-  const firma = JSON.stringify([turnoId, contado.trim(), base.trim(), persona.trim()]);
+  // Misma clave mientras no cambien contado y persona: un reintento no registra otro cierre (Req 1.8).
+  const firma = JSON.stringify([turnoId, contado.trim(), persona.trim()]);
   const { clave, renovar } = useClaveIdempotente(firma);
 
   const enviar = async () => {
     if (enviandoRef.current) return;
 
     const monto = validarEnteroEnRango(contado, 0, CONTADO_MAX);
-    const baseVal = validarEnteroEnRango(base, 0, CONTADO_MAX);
     const nombre = validarNombrePersona(persona);
-    const cuenta = monto.ok && baseVal.ok ? calcularCierre(monto.valor, baseVal.valor) : null;
 
     setErrorContado(monto.ok ? null : MENSAJES_CONTADO[monto.error]);
-    setErrorBase(
-      !baseVal.ok ? MENSAJES_BASE[baseVal.error] : cuenta && !cuenta.ok ? MENSAJES_BASE[cuenta.error] : null
-    );
     setErrorPersona(nombre.ok ? null : MENSAJES_NOMBRE[nombre.error]);
-    if (!monto.ok || !baseVal.ok || !nombre.ok || !cuenta?.ok) return;
+    if (!monto.ok || !nombre.ok) return;
 
     enviandoRef.current = true;
     setEnviando(true);
     setErrorEnvio(null);
     try {
-      const r = await cerrarTurno(turnoId, clave, nombre.valor, monto.valor, baseVal.valor);
+      const r = await cerrarTurno(turnoId, clave, nombre.valor, monto.valor, 0);
       renovar();
       if (r.resultado === 'ya_cerrado') {
         setYaCerrado({ cerradoPor: r.cerradoPor, cerradoEn: r.cerradoEn });
@@ -126,13 +104,6 @@ export function CierreTurno({
   const cambiarContado = (valor: string) => {
     setContado(valor);
     if (errorContado) setErrorContado(null);
-    if (errorBase) setErrorBase(null);
-    setErrorEnvio(null);
-  };
-
-  const cambiarBase = (valor: string) => {
-    setBase(valor);
-    if (errorBase) setErrorBase(null);
     setErrorEnvio(null);
   };
 
@@ -141,13 +112,6 @@ export function CierreTurno({
     if (errorPersona) setErrorPersona(null);
     setErrorEnvio(null);
   };
-
-  // Solo usa lo que escribió la persona: contado - base (Req 1.1).
-  const montoPrevio = validarEnteroEnRango(contado, 0, CONTADO_MAX);
-  const basePrevia = validarEnteroEnRango(base, 0, CONTADO_MAX);
-  const cuentaPrevia =
-    montoPrevio.ok && basePrevia.ok ? calcularCierre(montoPrevio.valor, basePrevia.valor) : null;
-  const enviadoPrevio = cuentaPrevia?.ok ? cuentaPrevia.enviado : null;
 
   const claseCampo = (error: string | null) =>
     `min-h-[64px] w-full rounded-2xl border-2 bg-lz-surface py-3 pl-12 pr-4 text-right font-lz-display text-3xl font-bold text-lz-charcoal placeholder:text-lz-charcoal-muted focus:outline-none disabled:opacity-50 ${
@@ -211,45 +175,6 @@ export function CierreTurno({
               </p>
             )}
           </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor={idBase} className="font-lz-display text-base font-semibold text-lz-charcoal">
-              Base para el siguiente turno
-            </label>
-            <div className="relative">
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-lz-display text-3xl font-bold text-lz-charcoal-muted"
-              >
-                $
-              </span>
-              <input
-                id={idBase}
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                value={base}
-                disabled={enviando}
-                onChange={(e) => cambiarBase(conMiles(e.target.value))}
-                aria-invalid={errorBase ? true : undefined}
-                aria-describedby={errorBase ? idErrorBase : undefined}
-                className={claseCampo(errorBase)}
-              />
-            </div>
-            {errorBase && (
-              <p id={idErrorBase} role="alert" className="text-sm font-medium text-lz-danger">
-                {errorBase}
-              </p>
-            )}
-          </div>
-
-          {enviadoPrevio !== null && (
-            <p className="text-base text-lz-charcoal-muted" aria-live="polite">
-              Se enviarán{' '}
-              <span className="font-bold text-lz-charcoal tabular-nums">{formatCurrency(enviadoPrevio)}</span> a
-              caja mayor
-            </p>
-          )}
 
           <SelectorPersona
             personas={personas}

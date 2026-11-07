@@ -43,11 +43,7 @@ export function ResultadoCierre({ cierre, turnoId, onContinuar }: ResultadoCierr
         </div>
 
         <dl className="flex flex-col divide-y divide-lz-border">
-          <div className="flex justify-between gap-3 py-2">
-            <dt className="text-lz-charcoal-muted">Base que quedó</dt>
-            <dd className="font-semibold tabular-nums">{formatCurrency(cierre.baseSiguiente)}</dd>
-          </div>
-          <div className="flex items-baseline justify-between gap-3 pt-3">
+          <div className="flex items-baseline justify-between gap-3 py-2">
             <dt className="font-lz-display text-base font-bold">Enviado a caja mayor</dt>
             <dd className="font-lz-display text-2xl font-bold tabular-nums">
               {formatCurrency(cierre.enviadoMayor)}

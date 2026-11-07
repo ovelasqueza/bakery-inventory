@@ -73,6 +73,10 @@ export function aDatosRecibo(r: ReciboCrudo): DatosRecibo {
   const g = r.gastos ?? {};
   const re = r.retiros ?? {};
   const a = r.autoconsumo ?? {};
+  const base = num(t.base);
+  const efectivoEsperado = num(t.efectivo_esperado) - base;
+  const efectivoContado = num(t.efectivo_contado);
+  const diferencia = efectivoContado - efectivoEsperado;
   return {
     turno: {
       id: t.id,
@@ -80,11 +84,11 @@ export function aDatosRecibo(r: ReciboCrudo): DatosRecibo {
       abiertoEn: t.abierto_en,
       cerradoPor: t.cerrado_por ?? '',
       cerradoEn: t.cerrado_en,
-      base: num(t.base),
-      efectivoEsperado: num(t.efectivo_esperado),
-      efectivoContado: num(t.efectivo_contado),
-      diferencia: num(t.diferencia),
-      baseSiguiente: numONulo(t.base_siguiente),
+      base: 0,
+      efectivoEsperado,
+      efectivoContado,
+      diferencia,
+      baseSiguiente: 0,
       enviadoMayor: numONulo(t.enviado_mayor),
     },
     ventas: {

@@ -151,7 +151,6 @@ function seccionCuadre(datos: DatosRecibo): LineaRecibo[] {
   const t = datos.turno;
   const filas: LineaRecibo[] = [
     titulo('CUADRE DE CAJA'),
-    filaDinero('Base inicial', t.base),
     filaDinero('Ventas en efectivo', datos.ventas.efectivo),
     filaDinero('Gastos de caja', datos.gastos.cajon),
   ];
