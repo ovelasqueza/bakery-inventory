@@ -122,9 +122,17 @@ function seccionProductos(lista: DatosRecibo['productos'], limite: number): Line
   ];
 }
 
+function esValeGasto(g: DatosRecibo['gastos']['lista'][number]): boolean {
+  const cat = limpio(g.categoria).toLowerCase();
+  const conc = limpio(g.concepto).toLowerCase();
+  return cat.includes('vale') || conc.startsWith('vale (') || conc.startsWith('vale:');
+}
+
 function filaGasto(g: DatosRecibo['gastos']['lista'][number]): LineaRecibo {
   const valor = dineroRecibo(g.valor);
-  const nombre = limpio(g.concepto) || limpio(g.categoria);
+  const rawNombre = limpio(g.concepto) || limpio(g.categoria);
+  const nombre =
+    esValeGasto(g) && !rawNombre.toLowerCase().startsWith('vale') ? `Vale: ${rawNombre}` : rawNombre;
   const sufijo = g.cajon === 0 ? SUFIJO_CAJA_MAYOR : '';
   const disponible = Math.max(0, anchoDe('normal') - largo(valor) - 1 - largo(sufijo));
   return { texto: fila(recortar(nombre, disponible) + sufijo, valor), estilo: 'normal', alineacion: 'izquierda' };
@@ -136,6 +144,16 @@ function seccionGastos(g: DatosRecibo['gastos'], limite: number): LineaRecibo[] 
   const mostrados = g.lista.slice(0, limite);
   filas.push(...mostrados.map(filaGasto));
   if (mostrados.length < g.lista.length) filas.push(lineaRecorte(g.lista.length - mostrados.length));
+
+  const totalVales = g.lista.reduce((s, item) => (esValeGasto(item) ? s + item.valor : s), 0);
+  if (totalVales > 0) {
+    const totalOtrosGastos = Math.max(0, g.total - totalVales);
+    if (totalOtrosGastos > 0) {
+      filas.push(filaDinero('Subtotal gastos', totalOtrosGastos));
+    }
+    filas.push(filaDinero('Subtotal vales', totalVales));
+  }
+
   filas.push(filaDinero('Total gastos', g.total, 'negrita'));
   return filas;
 }
@@ -149,11 +167,20 @@ function etiquetaDiferencia(diferencia: number): string {
 
 function seccionCuadre(datos: DatosRecibo): LineaRecibo[] {
   const t = datos.turno;
+  const valesCajon = datos.gastos.lista.reduce(
+    (s, item) => (esValeGasto(item) ? s + item.cajon : s),
+    0,
+  );
+  const gastosCajonSinVales = Math.max(0, datos.gastos.cajon - valesCajon);
+
   const filas: LineaRecibo[] = [
     titulo('CUADRE DE CAJA'),
     filaDinero('Ventas en efectivo', datos.ventas.efectivo),
-    filaDinero('Gastos de caja', datos.gastos.cajon),
+    filaDinero('Gastos de caja', gastosCajonSinVales),
   ];
+  if (valesCajon > 0) {
+    filas.push(filaDinero('Vales de caja', valesCajon));
+  }
   if (datos.retiros.total > 0) {
     filas.push(filaDinero('Retiros de caja', datos.retiros.total));
   }

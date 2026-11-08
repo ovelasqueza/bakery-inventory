@@ -237,18 +237,45 @@ export function PuntoVenta() {
   // ---------------------------------------------------------------------------
   // Búsqueda y filtro del catálogo (compartidos por Vendiendo y Autoconsumo)
   // ---------------------------------------------------------------------------
+  const categoriasOrdenadas = useMemo(() => {
+    const esPanes = (nombre: string) => {
+      const n = nombre.trim().toLowerCase();
+      return n === 'panes' || n === 'pan' || n.startsWith('panes');
+    };
+    const panes = catalogo.categorias.filter((c) => esPanes(c.nombre));
+    const resto = catalogo.categorias.filter((c) => !esPanes(c.nombre));
+    return [...panes, ...resto];
+  }, [catalogo.categorias]);
+
+  const categoriaPorDefecto = useMemo<string | 'todas'>(
+    () => categoriasOrdenadas[0]?.id ?? 'todas',
+    [categoriasOrdenadas]
+  );
+
   const [texto, setTexto] = useState('');
   const [categoriaId, setCategoriaId] = useState<string | 'todas'>('todas');
+  const categoriaActiva = useMemo<string | 'todas'>(() => {
+    if (categoriaId !== 'todas' && categoriasOrdenadas.some((c) => c.id === categoriaId)) {
+      return categoriaId;
+    }
+    return categoriaPorDefecto;
+  }, [categoriaId, categoriasOrdenadas, categoriaPorDefecto]);
+
   const textoDiferido = useBusquedaDiferida(texto, ESPERA_BUSQUEDA_MS);
   const filtrados = useMemo(
-    () => filtrarProductos(catalogo.productos, textoDiferido, categoriaId),
-    [catalogo.productos, textoDiferido, categoriaId]
+    () =>
+      filtrarProductos(
+        catalogo.productos,
+        textoDiferido,
+        textoDiferido.trim() !== '' ? 'todas' : categoriaActiva
+      ),
+    [catalogo.productos, textoDiferido, categoriaActiva]
   );
 
   const limpiarBusqueda = useCallback(() => {
     setTexto('');
-    setCategoriaId('todas');
-  }, []);
+    setCategoriaId(categoriaPorDefecto);
+  }, [categoriaPorDefecto]);
 
   const elegirCategoria = useCallback((id: string | 'todas') => {
     setCategoriaId(id);
@@ -702,8 +729,8 @@ export function PuntoVenta() {
           <BarraBusqueda
             texto={texto}
             onTexto={setTexto}
-            categorias={catalogo.categorias}
-            categoriaId={categoriaId}
+            categorias={categoriasOrdenadas}
+            categoriaId={categoriaActiva}
             onCategoria={elegirCategoria}
           />
         </div>

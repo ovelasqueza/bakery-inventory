@@ -15,10 +15,7 @@ interface BarraBusquedaProps {
 }
 
 export function BarraBusqueda({ texto, onTexto, categorias, categoriaId, onCategoria }: BarraBusquedaProps) {
-  const opciones: { id: string | 'todas'; nombre: string }[] = [
-    { id: 'todas', nombre: 'Todas' },
-    ...categorias,
-  ];
+  const opciones: { id: string | 'todas'; nombre: string }[] = categorias;
 
   return (
     <div className="flex flex-col gap-3">

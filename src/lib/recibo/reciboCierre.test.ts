@@ -143,6 +143,27 @@ describe('lineasReciboCierre', () => {
     expect(t).toContain('... y 1 más');
     expect(t.filter((x) => x.startsWith('... y'))).toEqual(['... y 1 más', '... y 1 más']);
   });
+
+  it('discrimina los vales en efectivo dentro de GASTOS DEL TURNO y en CUADRE DE CAJA', () => {
+    const d = ejemplo();
+    d.gastos.lista.push({
+      creadoEn: '2025-01-15T16:00:00Z',
+      categoria: 'Vales de caja',
+      concepto: 'Vale (Juan): Adelanto',
+      valor: 25_000,
+      cajon: 25_000,
+      mayor: 0,
+    });
+    d.gastos.total += 25_000;
+    d.gastos.cajon += 25_000;
+    const t = textos(lineasReciboCierre(d, AHORA));
+    expect(t.some((x) => x.startsWith('Vale (Juan): Adelanto') && x.endsWith('$ 25.000'))).toBe(true);
+    expect(t.some((x) => x.startsWith('Subtotal gastos') && x.endsWith('$ 100.000'))).toBe(true);
+    expect(t.some((x) => x.startsWith('Subtotal vales') && x.endsWith('$ 25.000'))).toBe(true);
+    expect(t.some((x) => x.startsWith('Total gastos') && x.endsWith('$ 125.000'))).toBe(true);
+    expect(t.some((x) => x.startsWith('Gastos de caja') && x.endsWith('$ 60.000'))).toBe(true);
+    expect(t.some((x) => x.startsWith('Vales de caja') && x.endsWith('$ 25.000'))).toBe(true);
+  });
 });
 
 describe('bytesReciboCierre', () => {

@@ -1,6 +1,6 @@
 import { llamarRpc } from '@/lib/api/errores';
 import { obtenerGastosTurnosCerradosActivos } from '@/lib/api/gastos';
-import { obtenerIdsGastosValesRespaldo } from '@/lib/api/vales';
+import { obtenerValesEfectivoSinGastoEnRango } from '@/lib/api/vales';
 import { derivarUuidSecundario } from '@/lib/api/ventas';
 import type { Rango } from '@/lib/fechas/bogota';
 import { supabase } from '@/lib/supabase';
@@ -222,12 +222,12 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
   const inicioIso = `${rango.desde}T00:00:00.000-05:00`;
   const finIso = `${rango.hasta}T23:59:59.999-05:00`;
 
-  const [data, idsValesRespaldo, gastosCerradosActivos, resClaves] = await Promise.all([
+  const [data, valesNativosEfectivo, gastosCerradosActivos, resClaves] = await Promise.all([
     llamarRpc<ReporteCrudo>('reporte_rango', {
       p_desde: rango.desde,
       p_hasta: rango.hasta,
     }),
-    obtenerIdsGastosValesRespaldo().catch(() => new Set<string>()),
+    obtenerValesEfectivoSinGastoEnRango(rango).catch(() => []),
     obtenerGastosTurnosCerradosActivos().catch(() => []),
     Promise.resolve(
       supabase
@@ -280,16 +280,28 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
     });
 
   const todosGastos = (data.gastos ?? []).map(aGasto);
-  const valesPorTurno = new Map<string, number>();
-  if (idsValesRespaldo.size > 0) {
-    for (const g of todosGastos) {
-      if (idsValesRespaldo.has(g.id) && g.turnoId) {
-        valesPorTurno.set(g.turnoId, (valesPorTurno.get(g.turnoId) ?? 0) + g.valor);
-      }
-    }
+  const categoriasGasto = (data.categorias_gasto ?? []).map(aCategoria);
+  let catValesId = categoriasGasto.find((c) => c.nombre.toLowerCase().includes('vale'))?.id ?? 'cat-vales-caja';
+  if (!categoriasGasto.some((c) => c.id === catValesId) && valesNativosEfectivo.length > 0) {
+    categoriasGasto.push({ id: catValesId, nombre: 'Vales de caja', activo: true });
   }
 
-  const gastosBase = idsValesRespaldo.size > 0 ? todosGastos.filter((g) => !idsValesRespaldo.has(g.id)) : todosGastos;
+  const gastosValesNativos: GastoReporte[] = valesNativosEfectivo.map((v) => ({
+    id: v.id,
+    creadoEn: v.creadoEn,
+    valor: Number(v.valor),
+    concepto: `Vale (${v.empleado}): ${v.descripcion}`.slice(0, 120),
+    categoriaGastoId: catValesId,
+    registradoPor: v.empleado,
+    turnoId: v.turnoId,
+    origenes: [{ parteId: null, nombre: 'Cajón', valor: Number(v.valor) }],
+  }));
+
+  const valesNativosPorTurno = new Map<string, number>();
+  for (const v of valesNativosEfectivo) {
+    valesNativosPorTurno.set(v.turnoId, (valesNativosPorTurno.get(v.turnoId) ?? 0) + Number(v.valor));
+  }
+
   const msInicio = Date.parse(inicioIso);
   const msFin = Date.parse(finIso);
   const gastosExtraRango: GastoReporte[] = gastosCerradosActivos
@@ -313,11 +325,11 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
     gastosExtraPorTurno.set(g.turnoId, (gastosExtraPorTurno.get(g.turnoId) ?? 0) + Number(g.valor));
   }
 
-  const gastos = [...gastosBase, ...gastosExtraRango];
+  const gastos = [...todosGastos, ...gastosValesNativos, ...gastosExtraRango];
   const turnos = (data.turnos ?? []).map(aTurno).map((t) => {
-    const restarVales = valesPorTurno.get(t.id) ?? 0;
+    const sumarValesNativos = valesNativosPorTurno.get(t.id) ?? 0;
     const sumarGastosCerrados = gastosExtraPorTurno.get(t.id) ?? 0;
-    const nuevoTotalGastos = Math.max(0, t.totalGastos - restarVales) + sumarGastosCerrados;
+    const nuevoTotalGastos = t.totalGastos + sumarValesNativos + sumarGastosCerrados;
     const nuevoEsperado = t.efectivoEsperado - sumarGastosCerrados;
     const nuevaDiferencia =
       t.cerradoEn !== null && t.efectivoContado !== null ? t.efectivoContado - nuevoEsperado : t.diferencia;
@@ -335,7 +347,7 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
     gastos,
     turnos,
     metodos: (data.metodos ?? []).map(aMetodo),
-    categoriasGasto: (data.categorias_gasto ?? []).map(aCategoria),
+    categoriasGasto,
     autoconsumos: (data.autoconsumos ?? []).map(aAutoconsumo),
   };
 }

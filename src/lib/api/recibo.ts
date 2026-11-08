@@ -1,5 +1,6 @@
 import { llamarRpc } from './errores';
 import { obtenerGastosTurnosCerradosActivos } from './gastos';
+import { obtenerValesEfectivoSinGastoDelTurno } from './vales';
 
 /** Datos del Recibo_Cierre de un Turno cerrado (RPC `recibo_cierre`). */
 export interface DatosRecibo {
@@ -133,16 +134,20 @@ export function aDatosRecibo(r: ReciboCrudo): DatosRecibo {
  * `TURNO_NO_CERRADO` si sigue abierto y `SIN_CONEXION` sin red.
  */
 export async function datosReciboCierre(turnoId: string): Promise<DatosRecibo> {
-  const [r, gastosCerrados] = await Promise.all([
+  const [r, gastosCerrados, valesNativosCaja] = await Promise.all([
     llamarRpc<ReciboCrudo>('recibo_cierre', { p_turno: turnoId }),
     obtenerGastosTurnosCerradosActivos().catch(() => []),
+    obtenerValesEfectivoSinGastoDelTurno(turnoId).catch(() => []),
   ]);
   const datos = aDatosRecibo(r);
   const extrasTurno = gastosCerrados.filter((g) => g.turnoId === turnoId);
-  if (extrasTurno.length === 0) return datos;
+  if (extrasTurno.length === 0 && valesNativosCaja.length === 0) return datos;
 
-  const sumaExtra = extrasTurno.reduce((s, g) => s + Number(g.valor), 0);
-  const efectivoEsperado = datos.turno.efectivoEsperado - sumaExtra;
+  const sumaExtraGastos = extrasTurno.reduce((s, g) => s + Number(g.valor), 0);
+  const sumaValesNativos = valesNativosCaja.reduce((s, v) => s + Number(v.valor), 0);
+  // Los vales nativos de la tabla `vales` ya fueron descontados en `efectivo_esperado_turno` en SQL;
+  // solo se descuentan aquí los gastos agregados posteriormente a turnos cerrados.
+  const efectivoEsperado = datos.turno.efectivoEsperado - sumaExtraGastos;
   const diferencia = datos.turno.efectivoContado - efectivoEsperado;
 
   return {
@@ -156,6 +161,14 @@ export async function datosReciboCierre(turnoId: string): Promise<DatosRecibo> {
       ...datos.gastos,
       lista: [
         ...datos.gastos.lista,
+        ...valesNativosCaja.map((v) => ({
+          creadoEn: v.creadoEn,
+          categoria: 'Vales de caja',
+          concepto: `Vale (${v.empleado}): ${v.descripcion}`.slice(0, 120),
+          valor: Number(v.valor),
+          cajon: Number(v.valor),
+          mayor: 0,
+        })),
         ...extrasTurno.map((g) => ({
           creadoEn: g.creadoEn,
           categoria: g.categoriaNombre,
@@ -165,8 +178,8 @@ export async function datosReciboCierre(turnoId: string): Promise<DatosRecibo> {
           mayor: 0,
         })),
       ],
-      total: datos.gastos.total + sumaExtra,
-      cajon: datos.gastos.cajon + sumaExtra,
+      total: datos.gastos.total + sumaExtraGastos + sumaValesNativos,
+      cajon: datos.gastos.cajon + sumaExtraGastos + sumaValesNativos,
     },
   };
 }

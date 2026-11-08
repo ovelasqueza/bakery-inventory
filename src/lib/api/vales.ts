@@ -310,6 +310,59 @@ export async function obtenerIdsGastosValesRespaldo(): Promise<Set<string>> {
   return ids;
 }
 
+/**
+ * Vales en efectivo (`saleDeCaja = true`) de la tabla nativa `vales` que no tienen
+ * un gasto vinculado en la tabla `gastos`, para incluirlos en el recibo de cierre.
+ */
+export async function obtenerValesEfectivoSinGastoDelTurno(turnoId: string): Promise<Vale[]> {
+  if (sinConexion()) return [];
+  const respaldo = await leerValesRespaldo();
+  const conGastoIds = new Set(respaldo.filter((v) => v.gastoVinculadoId !== null).map((v) => v.id));
+
+  try {
+    const { data, error } = await supabase
+      .from('vales')
+      .select('id, turno_id, empleado, valor, descripcion, sale_de_caja, creado_en')
+      .eq('turno_id', turnoId)
+      .eq('sale_de_caja', true)
+      .is('eliminado_en', null)
+      .order('creado_en', { ascending: true })
+      .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS));
+    if (error || !data) return [];
+    return (data as ValeCrudo[]).map(aVale).filter((v) => !conGastoIds.has(v.id));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Vales en efectivo (`saleDeCaja = true`) de la tabla nativa `vales` en un rango de fechas
+ * que no tienen un gasto vinculado en `gastos`, para que siempre aparezcan como gasto.
+ */
+export async function obtenerValesEfectivoSinGastoEnRango(rango: Rango): Promise<Vale[]> {
+  if (sinConexion()) return [];
+  const inicioIso = `${rango.desde}T00:00:00.000-05:00`;
+  const finIso = `${rango.hasta}T23:59:59.999-05:00`;
+  const respaldo = await leerValesRespaldo();
+  const conGastoIds = new Set(respaldo.filter((v) => v.gastoVinculadoId !== null).map((v) => v.id));
+
+  try {
+    const { data, error } = await supabase
+      .from('vales')
+      .select('id, turno_id, empleado, valor, descripcion, sale_de_caja, creado_en')
+      .gte('creado_en', inicioIso)
+      .lte('creado_en', finIso)
+      .eq('sale_de_caja', true)
+      .is('eliminado_en', null)
+      .order('creado_en', { ascending: true })
+      .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS));
+    if (error || !data) return [];
+    return (data as ValeCrudo[]).map(aVale).filter((v) => !conGastoIds.has(v.id));
+  } catch {
+    return [];
+  }
+}
+
 /** Vales vigentes dentro del rango de fechas (inclusive, zona horaria America/Bogota). */
 export async function obtenerValesRango(rango: Rango): Promise<Vale[]> {
   if (sinConexion()) throw new ErrorApp('SIN_CONEXION');
