@@ -115,9 +115,10 @@ export function PanelCobro({
   const puedeConfirmar =
     !registrando && !vacio && metodo !== null && (!esEfectivo || completo);
 
-  const confirmar = useCallback(async () => {
+  const confirmar = useCallback(async (recibidoOverride?: number) => {
+    const montoRecibido = typeof recibidoOverride === 'number' ? recibidoOverride : recibido;
     if (enProceso.current || !metodo || pedidoVacio(pedido)) return;
-    if (metodo.esEfectivo && recibido < total) return;
+    if (metodo.esEfectivo && montoRecibido < total) return;
     enProceso.current = true;
     setRegistrando(true);
     setError(null);
@@ -126,7 +127,7 @@ export function PanelCobro({
         clave,
         turnoId,
         metodoPagoId: metodo.id,
-        recibido: metodo.esEfectivo ? recibido : null,
+        recibido: metodo.esEfectivo ? montoRecibido : null,
       };
       const valores = pedido.valores ?? [];
       const tieneProductos = pedido.tipo === 'productos' && pedido.carrito.length > 0;
@@ -470,13 +471,14 @@ export function PanelCobro({
               })}
             </div>
 
-            {/* Paga exacto: pone el total como recibido (no cobra solo) */}
+            {/* Paga exacto: pone el total como recibido y cobra de inmediato */}
             <button
               type="button"
-              disabled={registrando}
+              disabled={registrando || vacio}
               onClick={() => {
                 setError(null);
                 setRecibido(total);
+                void confirmar(total);
               }}
               className="col-span-3 flex min-h-[64px] flex-col items-center justify-center rounded-2xl border-2 border-lz-sage bg-lz-sage-light font-bold text-lz-sage-dark transition active:scale-[0.97] active:bg-lz-sage active:text-lz-surface disabled:opacity-50 md:col-span-1"
             >
