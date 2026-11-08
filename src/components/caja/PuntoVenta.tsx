@@ -53,6 +53,7 @@ import { useTurnoCaja } from '@/hooks/caja/useTurnoCaja';
 import type { Cierre, TurnoAbierto } from '@/lib/api/turnos';
 import type { VentaRegistrada } from '@/lib/api/ventas';
 import { filtrarProductos, type ProductoCaja } from '@/lib/caja/busqueda';
+import { precargarBilletesYMonedas, precargarFotosProductos } from '@/lib/caja/cacheImagenes';
 import {
   CALCULADORA_INICIAL,
   reducirCalculadora,
@@ -254,6 +255,17 @@ export function PuntoVenta() {
 
   const [texto, setTexto] = useState('');
   const [categoriaId, setCategoriaId] = useState<string | 'todas'>('todas');
+
+  // Precarga en segundo plano billetes, monedas y fotos de productos en memoria + CacheStorage
+  useEffect(() => {
+    precargarBilletesYMonedas();
+  }, []);
+
+  useEffect(() => {
+    if (catalogo.estado === 'listo' && catalogo.productos.length > 0) {
+      precargarFotosProductos(catalogo.productos.map((p) => p.imagenUrl));
+    }
+  }, [catalogo.estado, catalogo.productos]);
   const categoriaActiva = useMemo<string | 'todas'>(() => {
     if (categoriaId !== 'todas' && categoriasOrdenadas.some((c) => c.id === categoriaId)) {
       return categoriaId;
@@ -687,13 +699,13 @@ export function PuntoVenta() {
     );
   }
 
-  let zonaIzquierda: ReactNode;
-  if (vista === 'cobrando') {
-    // Cobro en la misma pantalla: reemplaza la cuadrícula y el pedido sigue a la vista.
-    zonaIzquierda = (
+  const enCobroVista = vista === 'cobrando';
+  const enCalcVista = vista === 'calculadora';
+  const zonaIzquierda = (
+    <>
       <PanelCobro
         key="cobro-productos"
-        abierto
+        abierto={enCobroVista}
         pedido={pedidoProductos}
         turnoId={turno.id}
         metodos={parametros.metodosPago}
@@ -705,22 +717,21 @@ export function PuntoVenta() {
         reservaInferior={reservaInferior}
         onCambioConfirmacion={setConfirmacionCobro}
       />
-    );
-  } else if (vista === 'calculadora') {
-    zonaIzquierda = (
-      <CalculadoraVenta
-        estado={calculadora}
-        despachar={despacharCalculadora}
-        onCobrar={cobrar}
-        layout={layout}
-        reservaInferior={reservaInferior}
-        registrando={registrandoValor}
-        onVolver={volverAVender}
-      />
-    );
-  } else {
-    zonaIzquierda = (
-      <>
+      {enCalcVista && (
+        <CalculadoraVenta
+          estado={calculadora}
+          despachar={despacharCalculadora}
+          onCobrar={cobrar}
+          layout={layout}
+          reservaInferior={reservaInferior}
+          registrando={registrandoValor}
+          onVolver={volverAVender}
+        />
+      )}
+      <div
+        aria-hidden={enCobroVista || enCalcVista || undefined}
+        className={`min-h-0 flex-1 flex-col ${enCobroVista || enCalcVista ? 'hidden' : 'flex'}`}
+      >
         <div
           className="flex shrink-0 flex-col gap-2"
           style={{ paddingLeft: MEDIDAS.padding, paddingRight: MEDIDAS.padding, paddingTop: MEDIDAS.padding }}
@@ -735,9 +746,9 @@ export function PuntoVenta() {
           />
         </div>
         <div className="min-h-0 flex-1">{zonaProductos}</div>
-      </>
-    );
-  }
+      </div>
+    </>
+  );
 
   let panelDerecho: ReactNode;
   if (enAutoconsumo) {

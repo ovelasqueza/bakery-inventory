@@ -12,6 +12,7 @@ import { registrarVenta, registrarVentaValor, type VentaRegistrada } from '@/lib
 import { ErrorApp } from '@/lib/api/errores';
 import type { MetodoPagoParam } from '@/lib/api/parametros';
 import { useClaveIdempotente } from '@/hooks/caja/useClaveIdempotente';
+import { obtenerImagenCacheada, obtenerUrlEnMemoria, precargarBilletesYMonedas } from '@/lib/caja/cacheImagenes';
 import { imprimirReciboVenta, mensajeImpresionVenta } from '@/lib/recibo/reciboVenta';
 import { useToast } from '@/components/ui';
 import { AvisoSinConexion } from './AvisoSinConexion';
@@ -271,8 +272,6 @@ export function PanelCobro({
     return () => window.removeEventListener('keydown', alTeclear);
   }, [abierto, confirmar, esEfectivo, puedeConfirmar, registrando, teclear, volver]);
 
-  if (!abierto) return null;
-
   const errorVista = (
     <>
       {error?.tipo === 'sin_conexion' && (
@@ -296,7 +295,8 @@ export function PanelCobro({
   return (
     <section
       aria-label="Cobro"
-      className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4"
+      aria-hidden={!abierto || undefined}
+      className={`h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 ${abierto ? 'flex' : 'hidden'}`}
       style={reservaInferior !== undefined ? { paddingBottom: reservaInferior } : undefined}
     >
       {/* Fila 1: Volver + métodos de pago */}
@@ -409,22 +409,24 @@ export function PanelCobro({
           {/* Fila 3: billetes | teclado; abajo monedas | paga exacto */}
           <div className={`grid min-h-[22rem] flex-1 gap-2 md:grid-rows-[minmax(0,1fr)_auto] ${COLUMNAS}`}>
             <div className="col-span-3 grid min-h-0 grid-cols-3 grid-rows-2 gap-2">
-              {BILLETES.map((valor) => (
-                <button
-                  key={valor}
-                  type="button"
-                  onClick={() => sumar(valor)}
-                  disabled={registrando}
-                  aria-label={`Billete de ${miles(valor)}`}
-                  className={`flex min-h-[5.5rem] flex-col items-center gap-1 p-2 ${TARJETA}`}
-                >
-                  <span className="relative min-h-0 w-full flex-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/billetes/${valor}_new.webp`} alt="" draggable={false} className="absolute inset-0 h-full w-full object-contain" />
-                  </span>
-                  <span className="shrink-0 font-lz-display text-lg font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
-                </button>
-              ))}
+              {BILLETES.map((valor) => {
+                const ruta = `/billetes/${valor}_new.webp`;
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => sumar(valor)}
+                    disabled={registrando}
+                    aria-label={`Billete de ${miles(valor)}`}
+                    className={`flex min-h-[5.5rem] flex-col items-center gap-1 p-2 ${TARJETA}`}
+                  >
+                    <span className="relative min-h-0 w-full flex-1">
+                      <ImagenDenominacion ruta={ruta} className="absolute inset-0 h-full w-full object-contain" />
+                    </span>
+                    <span className="shrink-0 font-lz-display text-lg font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="col-span-3 grid min-h-0 grid-cols-3 grid-rows-4 gap-2 md:col-span-1" role="group" aria-label="Teclado numérico">
@@ -450,20 +452,22 @@ export function PanelCobro({
             </div>
 
             <div className="col-span-3 grid grid-cols-5 gap-2">
-              {MONEDAS.map((valor) => (
-                <button
-                  key={valor}
-                  type="button"
-                  onClick={() => sumar(valor)}
-                  disabled={registrando}
-                  aria-label={`Moneda de ${miles(valor)}`}
-                  className={`flex flex-col items-center gap-1 p-2 ${TARJETA}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/billetes/moneda-${valor}.webp`} alt="" draggable={false} className="h-11 w-11 object-contain" />
-                  <span className="font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
-                </button>
-              ))}
+              {MONEDAS.map((valor) => {
+                const ruta = `/billetes/moneda-${valor}.webp`;
+                return (
+                  <button
+                    key={valor}
+                    type="button"
+                    onClick={() => sumar(valor)}
+                    disabled={registrando}
+                    aria-label={`Moneda de ${miles(valor)}`}
+                    className={`flex flex-col items-center gap-1 p-2 ${TARJETA}`}
+                  >
+                    <ImagenDenominacion ruta={ruta} className="h-11 w-11 object-contain" />
+                    <span className="font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* Paga exacto: pone el total como recibido (no cobra solo) */}
@@ -517,6 +521,31 @@ function Dato({
         {formatCurrency(valor)}
       </p>
     </div>
+  );
+}
+
+function ImagenDenominacion({ ruta, className }: { ruta: string; className: string }) {
+  const [src, setSrc] = useState<string>(() => obtenerUrlEnMemoria(ruta) ?? ruta);
+
+  useEffect(() => {
+    precargarBilletesYMonedas();
+    const enRam = obtenerUrlEnMemoria(ruta);
+    if (enRam) {
+      setSrc(enRam);
+      return;
+    }
+    let cancelado = false;
+    void obtenerImagenCacheada(ruta).then((urlLocal) => {
+      if (!cancelado) setSrc(urlLocal);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [ruta]);
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" loading="eager" decoding="sync" draggable={false} className={className} />
   );
 }
 
