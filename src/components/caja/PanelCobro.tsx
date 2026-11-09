@@ -122,6 +122,10 @@ export function PanelCobro({
     enProceso.current = true;
     setRegistrando(true);
     setError(null);
+    if (metodo.esEfectivo) {
+      // Dispara la apertura del cajón de inmediato en paralelo para que abra al instante sin esperar la red.
+      void abrirCajon().catch(() => undefined);
+    }
     try {
       const base = {
         clave,
@@ -144,10 +148,6 @@ export function PanelCobro({
             valores,
           })
         : await registrarVentaValor({ ...base, valores });
-      if (venta.esEfectivo) {
-        // El cajón no frena la confirmación; su aviso lo maneja quien lo abre.
-        void abrirCajon().catch(() => undefined);
-      }
       if (imprimirTiquete) {
         void imprimirReciboVenta(venta.ventaId, metodo.nombre).then((r) => {
           showToast(mensajeImpresionVenta(r), r.ok ? 'success' : 'warning');

@@ -294,6 +294,10 @@ export function derivarUuidSecundario(uuid: string): string {
   return `${uuid.slice(0, -1)}${reemplazo}`;
 }
 
+/** Recuerda en memoria si la BD requiere ajuste temporal de precio para promociones o si no existe RPC combinada. */
+let bdRequiereAjustePromo = false;
+let rpcCombinadaDisponible = false;
+
 /** Registra la venta de forma atómica e idempotente por `clave` (Req 6.8, 6.12). */
 export async function registrarVenta(entrada: EntradaVenta): Promise<VentaRegistrada> {
   const valoresExtra: number[] = [...(entrada.valores ?? [])];
@@ -365,30 +369,36 @@ export async function registrarVenta(entrada: EntradaVenta): Promise<VentaRegist
     }
   }
 
+  const aplicarTemporalYEjecutar = async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      await Promise.all(
+        ajustesPromoTemporales.map((a) =>
+          supabase.from('productos').update({ precio_venta: a.precioPromo }).eq('id', a.productoId)
+        )
+      );
+      return await fn();
+    } finally {
+      void Promise.all(
+        ajustesPromoTemporales.map((a) =>
+          supabase.from('productos').update({ precio_venta: a.precioOriginal }).eq('id', a.productoId)
+        )
+      );
+    }
+  };
+
   const ejecutarConRespaldoPromo = async <T>(fn: () => Promise<T>): Promise<T> => {
     if (ajustesPromoTemporales.length === 0) return fn();
+    if (bdRequiereAjustePromo) {
+      return aplicarTemporalYEjecutar(fn);
+    }
     try {
       return await fn();
     } catch (err) {
       if (!(err instanceof ErrorApp) || err.codigo !== 'PRECIOS_ACTUALIZADOS') {
         throw err;
       }
-      // Si la RPC en Supabase valida precio_venta === precio sin conocer aún la promoción,
-      // aplicamos temporalmente el precio unitario de promoción durante la llamada y restauramos al instante.
-      try {
-        await Promise.all(
-          ajustesPromoTemporales.map((a) =>
-            supabase.from('productos').update({ precio_venta: a.precioPromo }).eq('id', a.productoId)
-          )
-        );
-        return await fn();
-      } finally {
-        await Promise.all(
-          ajustesPromoTemporales.map((a) =>
-            supabase.from('productos').update({ precio_venta: a.precioOriginal }).eq('id', a.productoId)
-          )
-        );
-      }
+      bdRequiereAjustePromo = true;
+      return aplicarTemporalYEjecutar(fn);
     }
   };
 
@@ -448,54 +458,60 @@ export async function registrarVenta(entrada: EntradaVenta): Promise<VentaRegist
 
   if (valoresExtra.length > 0) {
     return ejecutarConRespaldoPromo(async () => {
-      try {
-        const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_combinada', {
-          p_clave: entrada.clave,
-          p_turno: entrada.turnoId,
-          p_metodo: entrada.metodoPagoId,
-          p_lineas: lineasRpc,
-          p_valores: valoresExtra,
-          p_recibido: entrada.recibido,
-        });
-        return mapearVentaRegistrada(r);
-      } catch (e) {
-        if (!(e instanceof ErrorApp) || e.codigo !== 'DESCONOCIDO') {
-          throw e;
+      if (rpcCombinadaDisponible) {
+        try {
+          const r = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_combinada', {
+            p_clave: entrada.clave,
+            p_turno: entrada.turnoId,
+            p_metodo: entrada.metodoPagoId,
+            p_lineas: lineasRpc,
+            p_valores: valoresExtra,
+            p_recibido: entrada.recibido,
+          });
+          return mapearVentaRegistrada(r);
+        } catch (e) {
+          if (!(e instanceof ErrorApp) || e.codigo !== 'DESCONOCIDO') {
+            throw e;
+          }
+          rpcCombinadaDisponible = false;
         }
-        const totalProductos = lineasRpc.reduce((s, l) => s + l.cantidad * l.precio, 0);
-        const totalValores = valoresExtra.reduce((s, v) => s + v, 0);
-        const totalGeneral = totalProductos + totalValores;
-        const cambioTotal =
-          entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
-        const recibidoProductos =
-          entrada.recibido !== null ? totalProductos + cambioTotal : null;
-        const recibidoValores = entrada.recibido !== null ? totalValores : null;
+      }
 
-        const rProd = await llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
+      const totalProductos = lineasRpc.reduce((s, l) => s + l.cantidad * l.precio, 0);
+      const totalValores = valoresExtra.reduce((s, v) => s + v, 0);
+      const totalGeneral = totalProductos + totalValores;
+      const cambioTotal =
+        entrada.recibido !== null ? Math.max(0, entrada.recibido - totalGeneral) : 0;
+      const recibidoProductos =
+        entrada.recibido !== null ? totalProductos + cambioTotal : null;
+      const recibidoValores = entrada.recibido !== null ? totalValores : null;
+
+      const [rProd, rVal] = await Promise.all([
+        llamarRpc<RegistrarVentaCrudo>('registrar_venta', {
           p_clave: entrada.clave,
           p_turno: entrada.turnoId,
           p_metodo: entrada.metodoPagoId,
           p_lineas: lineasRpc,
           p_recibido: recibidoProductos,
-        });
-        const rVal = await llamarRpc<RegistrarVentaCrudo>('registrar_venta_valor', {
+        }),
+        llamarRpc<RegistrarVentaCrudo>('registrar_venta_valor', {
           p_clave: derivarUuidSecundario(entrada.clave),
           p_turno: entrada.turnoId,
           p_metodo: entrada.metodoPagoId,
           p_valores: valoresExtra,
           p_recibido: recibidoValores,
-        });
-        const total = rProd.total + rVal.total;
-        const cambio = rProd.cambio + rVal.cambio;
-        return {
-          ventaId: rProd.venta_id,
-          total,
-          efectivoRecibido: total + cambio,
-          cambio,
-          esEfectivo: rProd.es_efectivo,
-          creadoEn: rProd.creado_en,
-        };
-      }
+        }),
+      ]);
+      const total = rProd.total + rVal.total;
+      const cambio = rProd.cambio + rVal.cambio;
+      return {
+        ventaId: rProd.venta_id,
+        total,
+        efectivoRecibido: total + cambio,
+        cambio,
+        esEfectivo: rProd.es_efectivo,
+        creadoEn: rProd.creado_en,
+      };
     });
   }
 

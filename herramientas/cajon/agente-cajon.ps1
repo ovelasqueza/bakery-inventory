@@ -126,22 +126,36 @@ function EsOrigenPermitido([string]$origen) {
   return $false
 }
 
-function ImpresoraActual {
+$script:impresoraCache = if ($cfg.impresora) { [string]$cfg.impresora } else { $null }
+$script:ultimaLecturaImp = [DateTime]::MinValue
+
+function ImpresoraActual([bool]$forzar = $false) {
+  if (-not $forzar -and $script:impresoraCache -and ((Get-Date) - $script:ultimaLecturaImp).TotalSeconds -lt 120) {
+    return $script:impresoraCache
+  }
   $cfgActual = LeerConfig
-  if ($cfgActual.impresora) { return [string]$cfgActual.impresora }
+  if ($cfgActual.impresora) {
+    $script:impresoraCache = [string]$cfgActual.impresora
+    $script:ultimaLecturaImp = Get-Date
+    return $script:impresoraCache
+  }
   try {
     $p = Get-CimInstance Win32_Printer -Filter 'Default=TRUE' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($p) { return [string]$p.Name }
+    if ($p) {
+      $script:impresoraCache = [string]$p.Name
+      $script:ultimaLecturaImp = Get-Date
+      return $script:impresoraCache
+    }
   } catch { }
-  return $null
+  return $script:impresoraCache
 }
+
+$script:pinCajon = if ($cfg.pin -and [int]$cfg.pin -eq 5) { 1 } else { 0 }
+$script:bytesCajon = [byte[]](0x1B, 0x70, $script:pinCajon, 0x19, 0xFA)
 
 # ESC p m t1 t2: m = 0 (pin 2, el más común) o 1 (pin 5); pulso de 25 x 2 ms y espera de 250 x 2 ms
 function ComandoCajon {
-  $cfgActual = LeerConfig
-  $m = 0
-  if ($cfgActual.pin -and [int]$cfgActual.pin -eq 5) { $m = 1 }
-  return [byte[]](0x1B, 0x70, $m, 0x19, 0xFA)
+  return $script:bytesCajon
 }
 
 function Responder($flujo, [string]$estado, [string]$cuerpo, [string]$origen) {

@@ -59,6 +59,10 @@ export function useCobroDirecto(opciones: OpcionesCobroDirecto): CobroDirectoHoo
       setRegistrando(true);
       setError(null);
       const clave = claveDe(firmaCobroDirecto(valores, metodo.id));
+      if (metodo.esEfectivo) {
+        // Abre el cajón de inmediato en paralelo sin esperar el viaje de red a Supabase.
+        void ops.current.abrirCajon().catch(() => undefined);
+      }
       try {
         const venta = await registrarVentaValor({
           clave,
@@ -67,10 +71,6 @@ export function useCobroDirecto(opciones: OpcionesCobroDirecto): CobroDirectoHoo
           valores,
           recibido: datos.recibido,
         });
-        if (venta.esEfectivo) {
-          // El cajón no bloquea: la venta ya quedó registrada.
-          void ops.current.abrirCajon().catch(() => undefined);
-        }
         renovar();
         ops.current.onRegistrada(venta);
       } catch (e) {
