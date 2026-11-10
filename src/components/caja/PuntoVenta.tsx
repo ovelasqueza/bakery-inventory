@@ -808,10 +808,12 @@ export function PuntoVenta() {
 
   return contenedor(
     <>
-      <EncabezadoCaja
-        layout={layout}
-        acciones={<BarraAccionesCaja layout={layout} activo={accionActiva(vista)} onAccion={alAccion} />}
-      />
+      {!enCobroVista && (
+        <EncabezadoCaja
+          layout={layout}
+          acciones={<BarraAccionesCaja layout={layout} activo={accionActiva(vista)} onAccion={alAccion} />}
+        />
+      )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <section

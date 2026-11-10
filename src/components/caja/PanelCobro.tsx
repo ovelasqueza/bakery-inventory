@@ -300,7 +300,7 @@ export function PanelCobro({
     <section
       aria-label="Cobro"
       aria-hidden={!abierto || undefined}
-      className={`h-full min-h-0 flex-col gap-3 overflow-y-auto p-4 ${abierto ? 'flex' : 'hidden'}`}
+      className={`h-full min-h-0 flex-col gap-2 overflow-y-auto p-3 ${abierto ? 'flex' : 'hidden'}`}
       style={reservaInferior !== undefined ? { paddingBottom: reservaInferior } : undefined}
     >
       {/* Fila 1: Volver + métodos de pago */}
@@ -309,9 +309,9 @@ export function PanelCobro({
           type="button"
           onClick={volver}
           disabled={registrando}
-          className="flex min-h-[56px] shrink-0 items-center gap-2 rounded-2xl border-2 border-lz-border bg-lz-surface px-4 text-base font-semibold text-lz-charcoal transition-colors hover:bg-lz-oat disabled:opacity-50"
+          className="flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl border-2 border-lz-border bg-lz-surface px-3.5 py-1 text-sm font-semibold text-lz-charcoal transition-colors hover:bg-lz-oat disabled:opacity-50"
         >
-          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
           Volver
@@ -319,7 +319,7 @@ export function PanelCobro({
         {activos.length === 0 ? (
           <p className="flex flex-1 items-center text-sm font-semibold text-lz-danger">No hay métodos de pago activos.</p>
         ) : (
-          <div className="grid flex-1 grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] gap-2" role="radiogroup" aria-label="Método de pago">
+          <div className="grid flex-1 grid-cols-[repeat(auto-fit,minmax(6.5rem,1fr))] gap-2" role="radiogroup" aria-label="Método de pago">
             {activos.map((m) => {
               const elegido = m.id === metodoId;
               return (
@@ -333,7 +333,7 @@ export function PanelCobro({
                     setMetodoId(m.id);
                     setError(null);
                   }}
-                  className={`min-h-[56px] rounded-2xl border-2 px-3 font-lz-display text-lg font-bold transition-colors disabled:opacity-50 ${
+                  className={`min-h-[40px] rounded-xl border-2 px-3 py-1 font-lz-display text-base font-bold transition-colors disabled:opacity-50 ${
                     elegido
                       ? 'border-lz-sage bg-lz-sage text-lz-surface shadow-lz-soft'
                       : 'border-lz-border bg-lz-surface text-lz-charcoal hover:border-lz-sage-medium hover:bg-lz-sage-light'
@@ -350,7 +350,7 @@ export function PanelCobro({
           aria-pressed={imprimirTiquete}
           disabled={registrando}
           onClick={() => setImprimirTiquete((v) => !v)}
-          className={`flex min-h-[56px] shrink-0 items-center gap-2 rounded-2xl border-2 px-4 text-sm font-bold transition-colors disabled:opacity-50 ${
+          className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-xl border-2 px-3.5 py-1 text-sm font-bold transition-colors disabled:opacity-50 ${
             imprimirTiquete
               ? 'border-lz-sage bg-lz-sage-light text-lz-sage-dark'
               : 'border-lz-border bg-lz-surface text-lz-charcoal-muted hover:bg-lz-oat hover:text-lz-charcoal'
@@ -359,7 +359,7 @@ export function PanelCobro({
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
-            className="h-5 w-5 shrink-0"
+            className="h-4 w-4 shrink-0"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -376,18 +376,18 @@ export function PanelCobro({
 
       {metodo && esEfectivo ? (
         <>
-          {/* Fila 2: Cambio a entregar o Falta por pagar a lo ancho */}
+          {/* Fila 2: Cambio a entregar o Falta por pagar centrado y más delgado */}
           <div className="shrink-0">
             {completo ? (
-              <Dato titulo="CAMBIO A ENTREGAR" valor={cambio} grande estilo="border-2 border-lz-sage bg-lz-sage-light text-lz-sage-dark py-3" />
+              <Dato titulo="CAMBIO A ENTREGAR" valor={cambio} grande estilo="border-2 border-lz-sage bg-lz-sage-light text-lz-sage-dark" />
             ) : (
-              <Dato titulo="FALTA" valor={falta} grande estilo="border-2 border-lz-amber bg-lz-amber-light text-lz-amber py-3" />
+              <Dato titulo="FALTA" valor={falta} grande estilo="border-2 border-lz-amber bg-lz-amber-light text-lz-amber" />
             )}
           </div>
 
           {/* Fila 3: billetes ocupando todo el ancho para pantallas táctiles POS cuadradas; abajo monedas y botón paga exacto */}
           <div className="flex flex-1 min-h-0 flex-col gap-2">
-            <div className="grid flex-1 min-h-[14rem] grid-cols-3 grid-rows-2 gap-2.5">
+            <div className="grid flex-1 min-h-[15rem] grid-cols-3 grid-rows-2 gap-2.5">
               {BILLETES.map((valor) => {
                 const ruta = `/billetes/${valor}_new.webp`;
                 return (
@@ -410,7 +410,7 @@ export function PanelCobro({
               })}
             </div>
 
-            <div className="grid shrink-0 grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="grid shrink-0 grid-cols-5 gap-2 sm:grid-cols-[repeat(5,minmax(0,1fr))_minmax(12rem,2.2fr)]">
               {MONEDAS.map((valor) => {
                 const ruta = `/billetes/moneda-${valor}.webp`;
                 return (
@@ -420,15 +420,15 @@ export function PanelCobro({
                     onClick={() => sumar(valor)}
                     disabled={registrando}
                     aria-label={`Moneda de ${miles(valor)}`}
-                    className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-2 ${TARJETA}`}
+                    className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 p-1.5 ${TARJETA}`}
                   >
-                    <ImagenDenominacion ruta={ruta} className="h-9 w-9 sm:h-11 sm:w-11 object-contain" />
+                    <ImagenDenominacion ruta={ruta} className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
                     <span className="font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
                   </button>
                 );
               })}
 
-              {/* Paga exacto: pone el total como recibido y cobra de inmediato */}
+              {/* Paga exacto: más ancho y destacado sin quitar altura a los billetes */}
               <button
                 type="button"
                 disabled={registrando || vacio}
@@ -437,10 +437,10 @@ export function PanelCobro({
                   setRecibido(total);
                   void confirmar(total);
                 }}
-                className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl border-2 border-lz-sage bg-lz-sage-light font-bold text-lz-sage-dark transition active:scale-[0.97] active:bg-lz-sage active:text-lz-surface disabled:opacity-50"
+                className="col-span-5 flex min-h-[4.25rem] flex-col items-center justify-center rounded-2xl border-2 border-lz-sage bg-lz-sage-light px-4 py-1 font-bold text-lz-sage-dark shadow-lz-soft transition hover:bg-lz-sage hover:text-lz-surface active:scale-[0.97] active:bg-lz-sage active:text-lz-surface disabled:opacity-50 sm:col-span-1"
               >
-                <span className="text-[11px] tracking-wider uppercase font-extrabold">Paga exacto</span>
-                <span className="font-lz-display text-lg sm:text-xl tabular-nums">{formatCurrency(total)}</span>
+                <span className="text-xs leading-none tracking-wider uppercase font-extrabold">Paga exacto</span>
+                <span className="font-lz-display text-2xl sm:text-3xl leading-tight font-extrabold tabular-nums">{formatCurrency(total)}</span>
               </button>
             </div>
           </div>
@@ -475,9 +475,9 @@ function Dato({
   grande?: boolean;
 }) {
   return (
-    <div className={`flex flex-col justify-center rounded-2xl px-4 py-2.5 ${estilo}`} aria-live="polite">
-      <p className="text-xs font-bold opacity-80 uppercase tracking-wider">{titulo}</p>
-      <p className={`truncate font-lz-display font-bold tabular-nums ${grande ? 'text-3xl sm:text-4xl tracking-tight' : 'text-2xl'}`}>
+    <div className={`flex flex-col items-center justify-center rounded-xl px-4 py-1 text-center ${estilo}`} aria-live="polite">
+      <p className="text-xs font-bold leading-none opacity-80 uppercase tracking-wider">{titulo}</p>
+      <p className={`truncate font-lz-display font-bold leading-tight tabular-nums ${grande ? 'text-3xl sm:text-4xl tracking-tight' : 'text-2xl'}`}>
         {formatCurrency(valor)}
       </p>
     </div>
