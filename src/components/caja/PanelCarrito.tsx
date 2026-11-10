@@ -69,6 +69,9 @@ interface PanelCarritoProps {
   onMetodoPago?: (id: string) => void;
   errorCobroDirecto?: ErrorCobroDirecto;
   onReintentarCobroDirecto?: () => void;
+  recibidoCobro?: number;
+  onLimpiarRecibidoCobro?: () => void;
+  esCobroEfectivo?: boolean;
 }
 
 const TITULO_POR_DEFECTO: Record<ModoLista, string> = {
@@ -388,6 +391,9 @@ export function PanelCarrito({
   onMetodoPago,
   errorCobroDirecto = null,
   onReintentarCobroDirecto,
+  recibidoCobro,
+  onLimpiarRecibidoCobro,
+  esCobroEfectivo = false,
 }: PanelCarritoProps) {
   const tono = TONO[modo];
   const autoconsumo = modo === 'autoconsumo';
@@ -609,9 +615,57 @@ export function PanelCarrito({
     </div>
   );
 
+  const recuadroRecibido =
+    esCobroEfectivo && typeof recibidoCobro === 'number' ? (
+      <div
+        className="flex items-center justify-between rounded-2xl border-2 border-lz-sage bg-lz-surface px-3.5 py-2.5 shadow-lz-soft"
+        aria-live="polite"
+      >
+        <div className="flex flex-col">
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">
+            Recibido
+          </span>
+          <span className="text-xs font-bold">
+            {recibidoCobro >= total ? (
+              <span className="text-lz-sage-dark">
+                Cambio: {formatCurrency(recibidoCobro - total)}
+              </span>
+            ) : (
+              <span className="text-lz-amber">
+                Falta: {formatCurrency(total - recibidoCobro)}
+              </span>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`font-lz-display text-2xl font-bold tabular-nums ${
+              recibidoCobro > 0 ? 'text-lz-charcoal' : 'text-lz-charcoal-muted'
+            }`}
+          >
+            {formatCurrency(recibidoCobro)}
+          </span>
+          {recibidoCobro > 0 && onLimpiarRecibidoCobro && !cargandoAccion && (
+            <button
+              type="button"
+              onClick={onLimpiarRecibidoCobro}
+              aria-label="Borrar recibido"
+              title="Borrar todo lo recibido"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-lz-charcoal-muted transition hover:bg-lz-danger-surface hover:text-lz-danger active:scale-95"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    ) : null;
+
   const pie = (
     <div className={`flex shrink-0 flex-col gap-3 border-t ${tono.franja} p-4`}>
       {cajaTotal}
+      {recuadroRecibido}
       {!autoconsumo && !cargandoAccion && digitadoCalculadora > 0 && (
         <p className="text-center text-xs font-semibold text-lz-charcoal-muted">
           Al cobrar se suma también {formatCurrency(digitadoCalculadora)} digitado.

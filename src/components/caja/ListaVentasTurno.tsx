@@ -191,7 +191,7 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
         if (e.target === e.currentTarget && !aAnular) onCerrar();
       }}
     >
-      <div className="flex max-h-full w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
+      <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
         <header className="flex items-center justify-between gap-3 border-b border-lz-border bg-lz-surface px-4 py-3">
           <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
             Ventas del turno
@@ -268,8 +268,10 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
                           <span className={`block font-semibold tabular-nums ${anulada ? 'text-lz-charcoal-muted line-through' : 'text-lz-charcoal'}`}>
                             {formatCurrency(v.total)}
                           </span>
-                          <span className="flex min-w-0 items-center gap-2 text-sm text-lz-charcoal-muted">
-                            <span className="truncate">{v.metodoNombre ?? 'Método'}</span>
+                          <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-lz-charcoal-muted">
+                            <span className="whitespace-nowrap font-semibold text-lz-charcoal">
+                              {v.metodoNombre ?? (v.esEfectivo ? 'Efectivo' : 'Método')}
+                            </span>
                             {v.tipo === 'valor' && (
                               <span className="shrink-0 rounded-full bg-lz-oat px-2 py-0.5 text-xs font-semibold text-lz-charcoal">
                                 Venta por valor
@@ -383,7 +385,7 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
                 </div>
                 <div className="flex justify-between gap-2 text-[11px]">
                   <span>Método de pago:</span>
-                  <span>{previsualizando.metodoNombre ?? 'Método'}</span>
+                  <span>{previsualizando.metodoNombre ?? (previsualizando.esEfectivo ? 'Efectivo' : 'Método')}</span>
                 </div>
 
                 <div className="my-2 border-b border-dashed border-lz-charcoal/40" />

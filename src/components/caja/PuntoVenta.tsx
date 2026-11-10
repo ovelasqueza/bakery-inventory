@@ -794,6 +794,9 @@ export function PuntoVenta() {
         onMetodoPago={escogerMetodoValor}
         errorCobroDirecto={soloCalculadora ? cobro.error : null}
         onReintentarCobroDirecto={reintentarValor}
+        recibidoCobro={enCobro && confirmacionCobro?.esEfectivo ? confirmacionCobro.recibido : undefined}
+        onLimpiarRecibidoCobro={enCobro && confirmacionCobro?.esEfectivo ? confirmacionCobro.limpiarRecibido : undefined}
+        esCobroEfectivo={enCobro && Boolean(confirmacionCobro?.esEfectivo)}
         textoVacio={
           enCalculadora
             ? 'Escriba un valor y toque "Agregar", o escoja productos.'

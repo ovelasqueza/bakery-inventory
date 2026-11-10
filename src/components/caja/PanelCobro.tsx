@@ -22,6 +22,9 @@ export type AccionConfirmarCobro = {
   registrando: boolean;
   textoBoton: string;
   confirmar: () => void;
+  esEfectivo?: boolean;
+  recibido?: number;
+  limpiarRecibido?: () => void;
 };
 
 interface PanelCobroProps {
@@ -48,16 +51,11 @@ type ErrorCobro = { tipo: 'sin_conexion' } | { tipo: 'mensaje'; texto: string } 
 /* Billetes y monedas de Colombia: imágenes en public/billetes. */
 const BILLETES = [2_000, 5_000, 10_000, 20_000, 50_000, 100_000];
 const MONEDAS = [50, 100, 200, 500, 1_000];
-const TECLAS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '000', '0', 'borrar'] as const;
-type Tecla = (typeof TECLAS)[number];
 
 const miles = (v: number) => new Intl.NumberFormat('es-CO').format(v);
 
 const TARJETA =
   'rounded-2xl border border-lz-border bg-lz-surface shadow-lz-soft transition active:scale-[0.97] active:bg-lz-sage-light hover:border-lz-sage-tint disabled:opacity-40';
-
-/** Columnas en pantallas medianas o más: 3 iguales para billetes y resumen · 1 para el teclado. */
-const COLUMNAS = 'grid-cols-3 md:grid-cols-[repeat(3,minmax(0,1fr))_minmax(12rem,16rem)]';
 
 function metodoInicial(metodos: MetodoPagoParam[]): string | null {
   const activos = metodos.filter((m) => m.activo);
@@ -209,11 +207,16 @@ export function PanelCobro({
       registrando,
       textoBoton,
       confirmar: () => void confirmar(),
+      esEfectivo,
+      recibido,
+      limpiarRecibido: () => {
+        if (!registrando) setRecibido(0);
+      },
     });
     return () => {
       onCambioConfirmacion?.(null);
     };
-  }, [abierto, confirmar, onCambioConfirmacion, puedeConfirmar, registrando, textoBoton]);
+  }, [abierto, confirmar, esEfectivo, onCambioConfirmacion, puedeConfirmar, recibido, registrando, textoBoton]);
 
   const volver = useCallback(() => {
     if (enProceso.current) return;
@@ -226,9 +229,9 @@ export function PanelCobro({
     setRecibido((r) => Math.min(r + v, RECIBIDO_MAX));
   };
 
-  /** Teclado: edita el valor recibido dígito a dígito. */
+  /** Teclado físico: edita el valor recibido dígito a dígito. */
   const teclear = useCallback(
-    (t: Tecla | 'limpiar') => {
+    (t: string | 'borrar' | 'limpiar') => {
       if (registrando) return;
       setError(null);
       if (t === 'limpiar') return setRecibido(0);
@@ -260,7 +263,7 @@ export function PanelCobro({
         }
       } else if (esEfectivo && /^\d$/.test(e.key)) {
         e.preventDefault();
-        teclear(e.key as Tecla);
+        teclear(e.key);
       } else if (esEfectivo && e.key === 'Backspace') {
         e.preventDefault();
         teclear('borrar');
@@ -373,43 +376,18 @@ export function PanelCobro({
 
       {metodo && esEfectivo ? (
         <>
-          {/* Fila 2: Total · Cambio/Falta · Recibido (encima del teclado) */}
-          <div className={`grid shrink-0 gap-2 ${COLUMNAS}`}>
-            <Dato titulo="TOTAL" valor={total} />
-            <div className="col-span-2">
-              {completo ? (
-                <Dato titulo="CAMBIO A ENTREGAR" valor={cambio} grande estilo="border-2 border-lz-sage bg-lz-sage-light text-lz-sage-dark" />
-              ) : (
-                <Dato titulo="FALTA" valor={falta} grande estilo="border-2 border-lz-amber bg-lz-amber-light text-lz-amber" />
-              )}
-            </div>
-            <div
-              className="relative col-span-3 flex flex-col justify-center rounded-2xl border-2 border-lz-sage bg-lz-surface px-3 py-2 md:col-span-1"
-              aria-live="polite"
-            >
-              <p className="text-xs font-bold text-lz-charcoal-muted">RECIBIDO</p>
-              <p className={`truncate pr-9 text-right font-lz-display text-3xl font-bold tabular-nums ${recibido ? 'text-lz-charcoal' : 'text-lz-charcoal-muted'}`}>
-                {formatCurrency(recibido)}
-                <span className="ml-0.5 inline-block w-0.5 animate-pulse bg-lz-sage align-middle" style={{ height: '0.9em' }} aria-hidden="true" />
-              </p>
-              <button
-                type="button"
-                onClick={() => teclear('limpiar')}
-                disabled={recibido === 0 || registrando}
-                aria-label="Borrar todo lo recibido"
-                title="Borrar todo"
-                className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-full text-lz-charcoal-muted hover:bg-lz-danger-surface hover:text-lz-danger disabled:opacity-0"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
+          {/* Fila 2: Cambio a entregar o Falta por pagar a lo ancho */}
+          <div className="shrink-0">
+            {completo ? (
+              <Dato titulo="CAMBIO A ENTREGAR" valor={cambio} grande estilo="border-2 border-lz-sage bg-lz-sage-light text-lz-sage-dark py-3" />
+            ) : (
+              <Dato titulo="FALTA" valor={falta} grande estilo="border-2 border-lz-amber bg-lz-amber-light text-lz-amber py-3" />
+            )}
           </div>
 
-          {/* Fila 3: billetes | teclado; abajo monedas | paga exacto */}
-          <div className={`grid min-h-[22rem] flex-1 gap-2 md:grid-rows-[minmax(0,1fr)_auto] ${COLUMNAS}`}>
-            <div className="col-span-3 grid min-h-0 grid-cols-3 grid-rows-2 gap-2">
+          {/* Fila 3: billetes ocupando todo el ancho para pantallas táctiles POS cuadradas; abajo monedas y botón paga exacto */}
+          <div className="flex flex-1 min-h-0 flex-col gap-2">
+            <div className="grid flex-1 min-h-[14rem] grid-cols-3 grid-rows-2 gap-2.5">
               {BILLETES.map((valor) => {
                 const ruta = `/billetes/${valor}_new.webp`;
                 return (
@@ -419,40 +397,20 @@ export function PanelCobro({
                     onClick={() => sumar(valor)}
                     disabled={registrando}
                     aria-label={`Billete de ${miles(valor)}`}
-                    className={`flex min-h-[5.5rem] flex-col items-center gap-1 p-2 ${TARJETA}`}
+                    className={`flex min-h-[5.5rem] flex-col items-center justify-between p-2.5 ${TARJETA}`}
                   >
                     <span className="relative min-h-0 w-full flex-1">
                       <ImagenDenominacion ruta={ruta} className="absolute inset-0 h-full w-full object-contain" />
                     </span>
-                    <span className="shrink-0 font-lz-display text-lg font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
+                    <span className="shrink-0 font-lz-display text-xl sm:text-2xl font-bold text-lz-charcoal tabular-nums">
+                      ${miles(valor)}
+                    </span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="col-span-3 grid min-h-0 grid-cols-3 grid-rows-4 gap-2 md:col-span-1" role="group" aria-label="Teclado numérico">
-              {TECLAS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => teclear(t)}
-                  disabled={registrando || (t === 'borrar' && recibido === 0)}
-                  aria-label={t === 'borrar' ? 'Borrar último dígito' : t}
-                  className={`flex min-h-[3rem] items-center justify-center font-lz-display text-3xl font-bold text-lz-charcoal tabular-nums ${TARJETA}`}
-                >
-                  {t === 'borrar' ? (
-                    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z" />
-                      <path d="M17 9l-5 5M12 9l5 5" />
-                    </svg>
-                  ) : (
-                    t
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <div className="col-span-3 grid grid-cols-5 gap-2">
+            <div className="grid shrink-0 grid-cols-3 sm:grid-cols-6 gap-2">
               {MONEDAS.map((valor) => {
                 const ruta = `/billetes/moneda-${valor}.webp`;
                 return (
@@ -462,29 +420,29 @@ export function PanelCobro({
                     onClick={() => sumar(valor)}
                     disabled={registrando}
                     aria-label={`Moneda de ${miles(valor)}`}
-                    className={`flex flex-col items-center gap-1 p-2 ${TARJETA}`}
+                    className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 p-2 ${TARJETA}`}
                   >
-                    <ImagenDenominacion ruta={ruta} className="h-11 w-11 object-contain" />
+                    <ImagenDenominacion ruta={ruta} className="h-9 w-9 sm:h-11 sm:w-11 object-contain" />
                     <span className="font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">${miles(valor)}</span>
                   </button>
                 );
               })}
-            </div>
 
-            {/* Paga exacto: pone el total como recibido y cobra de inmediato */}
-            <button
-              type="button"
-              disabled={registrando || vacio}
-              onClick={() => {
-                setError(null);
-                setRecibido(total);
-                void confirmar(total);
-              }}
-              className="col-span-3 flex min-h-[64px] flex-col items-center justify-center rounded-2xl border-2 border-lz-sage bg-lz-sage-light font-bold text-lz-sage-dark transition active:scale-[0.97] active:bg-lz-sage active:text-lz-surface disabled:opacity-50 md:col-span-1"
-            >
-              <span className="text-xs tracking-wider">PAGA EXACTO</span>
-              <span className="font-lz-display text-2xl tabular-nums">{formatCurrency(total)}</span>
-            </button>
+              {/* Paga exacto: pone el total como recibido y cobra de inmediato */}
+              <button
+                type="button"
+                disabled={registrando || vacio}
+                onClick={() => {
+                  setError(null);
+                  setRecibido(total);
+                  void confirmar(total);
+                }}
+                className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl border-2 border-lz-sage bg-lz-sage-light font-bold text-lz-sage-dark transition active:scale-[0.97] active:bg-lz-sage active:text-lz-surface disabled:opacity-50"
+              >
+                <span className="text-[11px] tracking-wider uppercase font-extrabold">Paga exacto</span>
+                <span className="font-lz-display text-lg sm:text-xl tabular-nums">{formatCurrency(total)}</span>
+              </button>
+            </div>
           </div>
 
           {errorVista}
@@ -517,9 +475,9 @@ function Dato({
   grande?: boolean;
 }) {
   return (
-    <div className={`flex h-full flex-col justify-center rounded-2xl px-3 py-2 ${estilo}`} aria-live="polite">
-      <p className="text-xs font-bold opacity-80">{titulo}</p>
-      <p className={`truncate font-lz-display font-bold tabular-nums ${grande ? 'text-4xl tracking-tight' : 'text-2xl'}`}>
+    <div className={`flex flex-col justify-center rounded-2xl px-4 py-2.5 ${estilo}`} aria-live="polite">
+      <p className="text-xs font-bold opacity-80 uppercase tracking-wider">{titulo}</p>
+      <p className={`truncate font-lz-display font-bold tabular-nums ${grande ? 'text-3xl sm:text-4xl tracking-tight' : 'text-2xl'}`}>
         {formatCurrency(valor)}
       </p>
     </div>
