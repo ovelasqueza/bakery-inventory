@@ -553,8 +553,10 @@ function mapearVentaRegistrada(r: RegistrarVentaCrudo): VentaRegistrada {
   };
 }
 
-/** Ventas del turno, de la más reciente a la más antigua, con el nombre del método (Req 7.1). */
-export async function ventasDelTurno(turnoId: string): Promise<VentaTurno[]> {
+export const LIMITE_ULTIMAS_VENTAS_TURNO = 10;
+
+/** Últimas ventas del turno (por defecto 10), de la más reciente a la más antigua, con el nombre del método (Req 7.1). */
+export async function ventasDelTurno(turnoId: string, limite = LIMITE_ULTIMAS_VENTAS_TURNO): Promise<VentaTurno[]> {
   if (sinConexion()) throw new ErrorApp('SIN_CONEXION');
 
   let respuesta;
@@ -567,6 +569,7 @@ export async function ventasDelTurno(turnoId: string): Promise<VentaTurno[]> {
       )
       .eq('turno_id', turnoId)
       .order('creado_en', { ascending: false })
+      .limit(limite)
       .abortSignal(AbortSignal.timeout(TIEMPO_LIMITE_MS));
   } catch (e) {
     throw traducirError(e);

@@ -84,7 +84,7 @@ describe('lineasReciboCierre', () => {
   it('muestra fecha, horas en 12 h y las secciones elementales en orden con saltos de línea', () => {
     const t = textos(lineasReciboCierre(ejemplo(), AHORA));
     expect(t).toContain('Fecha: 2025-01-15');
-    expect(t.find((x) => x.startsWith('Abrió: Ana'))?.endsWith('6:02 am')).toBe(true);
+    expect(t).toContain('Abrió: Ana');
     expect(t.find((x) => x.startsWith('Cerró: Ana'))?.endsWith('2:10 pm')).toBe(true);
     expect(t.find((x) => x.startsWith('Impreso:'))?.endsWith('2025-01-15 2:11 pm')).toBe(true);
     const orden = ['VENTAS', 'GASTOS DEL TURNO', 'CUADRE DE CAJA', 'RESUMEN DE PRODUCTOS'].map((s) => t.indexOf(s));
@@ -93,11 +93,11 @@ describe('lineasReciboCierre', () => {
     expect(t.filter((x) => x === '').length).toBeGreaterThanOrEqual(6);
   });
 
-  it('muestra la apertura con fecha si es de otro día', () => {
+  it('no muestra fecha ni hora de apertura en Abrió aunque sea de otro día', () => {
     const d = ejemplo();
     d.turno.abiertoEn = '2025-01-14T22:00:00Z';
     const t = textos(lineasReciboCierre(d, AHORA));
-    expect(t.find((x) => x.startsWith('Abrió:'))?.endsWith('2025-01-14 5:00 pm')).toBe(true);
+    expect(t.find((x) => x.startsWith('Abrió:'))).toBe('Abrió: Ana');
   });
 
   it('marca gastos de caja mayor, usa la categoría si no hay concepto y muestra Sobrante/Faltante en negrita', () => {

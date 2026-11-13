@@ -178,7 +178,6 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
   }, [aAnular, imprimiendo, onCerrar, previsualizando]);
 
   const registradas = (ventas ?? []).filter((v) => v.estado === 'registrada');
-  const total = registradas.reduce((s, v) => s + v.total, 0);
   const anuladas = (ventas?.length ?? 0) - registradas.length;
 
   return (
@@ -193,9 +192,11 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
     >
       <div className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-lz-linen shadow-lz-float">
         <header className="flex items-center justify-between gap-3 border-b border-lz-border bg-lz-surface px-4 py-3">
-          <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
-            Ventas del turno
-          </h2>
+          <div>
+            <h2 id={idTitulo} className="font-lz-display text-xl font-bold text-lz-charcoal">
+              Últimas 10 ventas del turno
+            </h2>
+          </div>
           <button
             type="button"
             onClick={onCerrar}
@@ -208,20 +209,12 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
           </button>
         </header>
 
-        <section className="grid grid-cols-2 gap-3 border-b border-lz-border bg-lz-surface px-4 py-3" aria-label="Totales del turno">
-          <div>
-            <p className="text-sm text-lz-charcoal-muted">Total vendido</p>
-            <p className="font-lz-display text-2xl font-bold text-lz-sage tabular-nums">
-              {ventas ? formatCurrency(total) : '—'}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-lz-charcoal-muted">Ventas</p>
-            <p className="font-lz-display text-lg font-semibold text-lz-charcoal tabular-nums">
-              {ventas ? registradas.length : '—'}
-              {anuladas > 0 && <span className="ml-1 text-sm font-medium text-lz-danger">({anuladas} anuladas)</span>}
-            </p>
-          </div>
+        <section className="flex items-center justify-between gap-3 border-b border-lz-border bg-lz-surface px-4 py-2.5" aria-label="Resumen últimas ventas">
+          <p className="text-sm text-lz-charcoal-muted">Mostradas</p>
+          <p className="font-lz-display text-lg font-semibold text-lz-charcoal tabular-nums">
+            {ventas ? registradas.length : '—'}
+            {anuladas > 0 && <span className="ml-1 text-sm font-medium text-lz-danger">({anuladas} anuladas)</span>}
+          </p>
         </section>
 
         <div className="flex-1 overflow-y-auto px-4 py-3">

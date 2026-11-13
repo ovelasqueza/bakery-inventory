@@ -242,18 +242,18 @@ function LineaPedido({
   };
 
   const botonCantidad =
-    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-lz-surface text-xl font-bold text-lz-charcoal transition active:scale-90';
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-lz-surface text-lg font-bold text-lz-charcoal transition active:scale-90';
 
   return (
-    <li className="flex flex-col gap-2 py-3">
-      <div className="flex items-start justify-between gap-2">
+    <li className="flex flex-col gap-1.5 py-2">
+      <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
-          <h4 className="truncate text-sm font-bold text-lz-charcoal" title={nombre}>
+          <h4 className="truncate text-xs font-bold text-lz-charcoal" title={nombre}>
             {nombre}
           </h4>
           {!sinPrecio && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <p className="text-xs text-lz-charcoal-muted">{formatCurrency(precio)} c/u</p>
+            <div className="flex flex-wrap items-center gap-1">
+              <p className="text-[11px] text-lz-charcoal-muted">{formatCurrency(precio)} c/u</p>
               {tienePromoAplicada(linea) &&
                 linea.promocion &&
                 (() => {
@@ -263,7 +263,7 @@ function LineaPedido({
                       ? `Promo ${d.unidadesPromo} (${formatCurrency(d.subtotalPromo)}) + ${d.unidadesNormales} (${formatCurrency(d.subtotalNormal)})`
                       : `Promo ${d.unidadesPromo} × ${formatCurrency(d.subtotalPromo)}`;
                   return (
-                    <span className="inline-flex items-center rounded-md bg-lz-amber-light px-1.5 py-0.5 text-[11px] font-bold text-lz-amber">
+                    <span className="inline-flex items-center rounded-md bg-lz-amber-light px-1.5 py-0.5 text-[10px] font-bold text-lz-amber">
                       {textoBadge}
                     </span>
                   );
@@ -272,14 +272,14 @@ function LineaPedido({
           )}
         </div>
         {!sinPrecio && (
-          <span className="shrink-0 font-lz-display text-base font-bold text-lz-charcoal tabular-nums">
+          <span className="shrink-0 font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">
             {formatCurrency(subtotalLinea(linea))}
           </span>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1 rounded-xl border border-lz-border bg-lz-oat p-0.5">
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-0.5 rounded-xl border border-lz-border bg-lz-oat p-0.5">
           <button
             type="button"
             onClick={() => despachar({ tipo: 'restar', productoId })}
@@ -301,7 +301,7 @@ function LineaPedido({
             onBlur={confirmarCantidad}
             onKeyDown={alTeclear}
             aria-label={`Cantidad de ${nombre}`}
-            className="h-11 w-14 rounded-lg border border-lz-border bg-lz-surface text-center font-lz-display text-base font-bold text-lz-charcoal tabular-nums focus:border-lz-sage focus:outline-none focus:ring-2 focus:ring-lz-sage-tint"
+            className="h-9 w-11 rounded-lg border border-lz-border bg-lz-surface text-center font-lz-display text-sm font-bold text-lz-charcoal tabular-nums focus:border-lz-sage focus:outline-none focus:ring-2 focus:ring-lz-sage-tint"
           />
           <button
             type="button"
@@ -318,7 +318,7 @@ function LineaPedido({
           onClick={() => despachar({ tipo: 'quitar', productoId })}
           aria-label={`Eliminar ${nombre}`}
           title="Eliminar"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-lz-charcoal-muted transition-colors hover:bg-lz-danger-surface hover:text-lz-danger"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lz-charcoal-muted transition-colors hover:bg-lz-danger-surface hover:text-lz-danger"
         >
           {ICONO_PAPELERA}
         </button>
@@ -341,14 +341,14 @@ function LineaValorPedido({
 }) {
   const texto = formatCurrency(valor.valor);
   return (
-    <li className="flex items-center justify-between gap-2 py-3">
+    <li className="flex items-center justify-between gap-1.5 py-2">
       <div className="min-w-0 flex-1">
-        <h4 className="truncate text-sm font-bold text-lz-charcoal">
-          Venta por valor <span className="text-xs font-semibold text-lz-charcoal-muted">#{numero}</span>
+        <h4 className="truncate text-xs font-bold text-lz-charcoal">
+          Venta por valor <span className="text-[11px] font-semibold text-lz-charcoal-muted">#{numero}</span>
         </h4>
-        <p className="text-xs text-lz-charcoal-muted">Calculadora</p>
+        <p className="text-[11px] text-lz-charcoal-muted">Calculadora</p>
       </div>
-      <span className="shrink-0 font-lz-display text-base font-bold text-lz-charcoal tabular-nums">
+      <span className="shrink-0 font-lz-display text-sm font-bold text-lz-charcoal tabular-nums">
         {texto}
       </span>
       {onQuitar && (
@@ -358,7 +358,7 @@ function LineaValorPedido({
           disabled={deshabilitado}
           aria-label={`Quitar valor ${numero}: ${texto}`}
           title="Quitar valor"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-lz-charcoal-muted transition-colors hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lz-charcoal-muted transition-colors hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:opacity-50"
         >
           {ICONO_PAPELERA}
         </button>
@@ -441,7 +441,7 @@ export function PanelCarrito({
       onClick={onCobrar}
       disabled={sinAccion || deshabilitarAccion || cargandoAccion}
       aria-busy={cargandoAccion || undefined}
-      className={`flex ${alto} min-w-[44px] items-center justify-center gap-2 rounded-2xl border ${tono.boton} px-5 font-lz-display text-lg font-bold tracking-wide shadow-lz-soft transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-lz-border disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:active:scale-100`}
+      className={`flex ${alto} min-w-[44px] items-center justify-center gap-2 rounded-2xl border ${tono.boton} px-3 font-lz-display text-base font-bold tracking-wide shadow-lz-soft transition active:scale-[0.98] disabled:cursor-not-allowed disabled:border-lz-border disabled:bg-lz-sand disabled:text-lz-charcoal-muted disabled:active:scale-100`}
     >
       {cargandoAccion && (
         <span
@@ -514,15 +514,15 @@ export function PanelCarrito({
   );
 
   const encabezado = (contraer?: ReactNode) => (
-    <div className={`flex shrink-0 flex-col gap-2 border-b ${tono.franja} px-4 py-3`}>
+    <div className={`flex shrink-0 flex-col gap-2 border-b ${tono.franja} px-3 py-2.5`}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-lz-display text-xl font-bold tracking-tight text-lz-charcoal">{titulo}</h2>
-        <div className="flex items-center gap-2">
+        <h2 className="font-lz-display text-lg font-bold tracking-tight text-lz-charcoal">{titulo}</h2>
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setConfirmandoVaciar(true)}
             disabled={nadaQueVaciar || confirmandoVaciar || cargandoAccion}
-            className="inline-flex h-11 min-w-[44px] items-center justify-center gap-1.5 rounded-xl border border-lz-border bg-lz-surface px-3 text-sm font-semibold text-lz-charcoal transition-colors hover:border-lz-danger-border hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:text-lz-charcoal-muted disabled:hover:border-lz-border disabled:hover:bg-lz-surface"
+            className="inline-flex h-9 min-w-[40px] items-center justify-center gap-1 rounded-xl border border-lz-border bg-lz-surface px-2.5 text-xs font-semibold text-lz-charcoal transition-colors hover:border-lz-danger-border hover:bg-lz-danger-surface hover:text-lz-danger disabled:cursor-not-allowed disabled:text-lz-charcoal-muted disabled:hover:border-lz-border disabled:hover:bg-lz-surface"
           >
             {ICONO_PAPELERA}
             Vaciar
@@ -562,9 +562,9 @@ export function PanelCarrito({
   );
 
   const lista = (
-    <div className="min-h-0 flex-1 overflow-y-auto px-4">
+    <div className="min-h-0 flex-1 overflow-y-auto px-3">
       {sinLineas ? (
-        <p className="py-10 text-center text-sm font-semibold text-lz-charcoal-muted">
+        <p className="py-8 text-center text-xs font-semibold text-lz-charcoal-muted">
           {textoVacio}
         </p>
       ) : (
@@ -594,22 +594,22 @@ export function PanelCarrito({
   );
 
   const cajaTotal = autoconsumo ? (
-    <div className="flex flex-col gap-1 rounded-2xl border border-lz-amber bg-lz-surface p-3.5 shadow-lz-soft">
+    <div className="flex flex-col gap-1 rounded-2xl border border-lz-amber bg-lz-surface p-2.5 shadow-lz-soft">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">Artículos</span>
-        <span className="font-lz-display text-3xl font-extrabold tracking-tight text-lz-charcoal tabular-nums">
+        <span className="text-[10px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">Artículos</span>
+        <span className="font-lz-display text-2xl font-extrabold tracking-tight text-lz-charcoal tabular-nums">
           {articulos}
         </span>
       </div>
-      <p className="text-xs text-lz-charcoal-muted">Valor de referencia: {totalTexto} · no se cobra</p>
+      <p className="text-[11px] text-lz-charcoal-muted">Valor de referencia: {totalTexto} · no se cobra</p>
     </div>
   ) : (
-    <div className="flex items-center justify-between rounded-2xl border border-lz-border bg-lz-surface p-3.5 shadow-lz-soft">
+    <div className="flex items-center justify-between rounded-2xl border border-lz-border bg-lz-surface p-2.5 shadow-lz-soft">
       <div className="flex flex-col">
-        <span className="text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">Total</span>
-        <span className="text-xs font-semibold text-lz-amber">{resumenCantidad}</span>
+        <span className="text-[10px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">Total</span>
+        <span className="text-[11px] font-semibold text-lz-amber">{resumenCantidad}</span>
       </div>
-      <span className="font-lz-display text-3xl font-extrabold tracking-tight text-lz-sage-dark tabular-nums">
+      <span className="font-lz-display text-2xl font-extrabold tracking-tight text-lz-sage-dark tabular-nums">
         {totalTexto}
       </span>
     </div>
@@ -618,14 +618,14 @@ export function PanelCarrito({
   const recuadroRecibido =
     esCobroEfectivo && typeof recibidoCobro === 'number' ? (
       <div
-        className="flex items-center justify-between rounded-2xl border-2 border-lz-sage bg-lz-surface px-3.5 py-2.5 shadow-lz-soft"
+        className="flex items-center justify-between rounded-2xl border-2 border-lz-sage bg-lz-surface px-3 py-2 shadow-lz-soft"
         aria-live="polite"
       >
         <div className="flex flex-col">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-lz-charcoal-muted">
             Recibido
           </span>
-          <span className="text-xs font-bold">
+          <span className="text-[11px] font-bold">
             {recibidoCobro >= total ? (
               <span className="text-lz-sage-dark">
                 Cambio: {formatCurrency(recibidoCobro - total)}
@@ -637,9 +637,9 @@ export function PanelCarrito({
             )}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <span
-            className={`font-lz-display text-2xl font-bold tabular-nums ${
+            className={`font-lz-display text-xl font-bold tabular-nums ${
               recibidoCobro > 0 ? 'text-lz-charcoal' : 'text-lz-charcoal-muted'
             }`}
           >
@@ -651,7 +651,7 @@ export function PanelCarrito({
               onClick={onLimpiarRecibidoCobro}
               aria-label="Borrar recibido"
               title="Borrar todo lo recibido"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-lz-charcoal-muted transition hover:bg-lz-danger-surface hover:text-lz-danger active:scale-95"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-lz-charcoal-muted transition hover:bg-lz-danger-surface hover:text-lz-danger active:scale-95"
             >
               <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -663,17 +663,17 @@ export function PanelCarrito({
     ) : null;
 
   const pie = (
-    <div className={`flex shrink-0 flex-col gap-3 border-t ${tono.franja} p-4`}>
+    <div className={`flex shrink-0 flex-col gap-2 border-t ${tono.franja} p-3`}>
       {cajaTotal}
       {recuadroRecibido}
       {!autoconsumo && !cargandoAccion && digitadoCalculadora > 0 && (
-        <p className="text-center text-xs font-semibold text-lz-charcoal-muted">
+        <p className="text-center text-[11px] font-semibold text-lz-charcoal-muted">
           Al cobrar se suma también {formatCurrency(digitadoCalculadora)} digitado.
         </p>
       )}
-      {nota && <p className="text-xs font-semibold text-lz-charcoal-muted">{nota}</p>}
+      {nota && <p className="text-[11px] font-semibold text-lz-charcoal-muted">{nota}</p>}
       {avisoErrorDirecto}
-      {botonCobrar('h-16 w-full')}
+      {botonCobrar('h-14 w-full')}
     </div>
   );
 

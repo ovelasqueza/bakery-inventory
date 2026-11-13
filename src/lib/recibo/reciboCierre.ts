@@ -73,12 +73,10 @@ function encabezado(): LineaRecibo[] {
 }
 
 function datosTurno(t: DatosRecibo['turno'], ahora: Date): LineaRecibo[] {
-  const mismoDia = diaLocal(t.abiertoEn) === diaLocal(t.cerradoEn);
-  const apertura = mismoDia ? hora12(t.abiertoEn) : fechaHora12(t.abiertoEn);
   const fecha = diaLocal(t.cerradoEn);
   return [
     linea(`Fecha: ${fecha}`),
-    { texto: fila(`Abrió: ${limpio(t.abiertoPor)}`, apertura), estilo: 'normal', alineacion: 'izquierda' },
+    linea(`Abrió: ${limpio(t.abiertoPor)}`),
     { texto: fila(`Cerró: ${limpio(t.cerradoPor)}`, hora12(t.cerradoEn)), estilo: 'normal', alineacion: 'izquierda' },
     { texto: fila('Impreso:', fechaHora12(ahora)), estilo: 'normal', alineacion: 'izquierda' },
   ];

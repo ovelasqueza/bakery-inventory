@@ -56,12 +56,31 @@ export function TarjetaProducto({
     !autoconsumo && Boolean(onAbrirPorMonto) && Boolean(producto.ventaPorMonto || producto.promocion);
 
   return (
-    <div className="relative flex w-full">
+    <div
+      className={`group relative flex w-full flex-col overflow-hidden rounded-2xl bg-lz-surface shadow-lz-card transition duration-100 hover:shadow-lz-float ${CLASES_TARJETA[modo]}`}
+    >
+      {mostrarBotonPopup && (
+        <div className="px-1.5 pt-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAbrirPorMonto?.(producto);
+            }}
+            title={`Vender ${producto.nombre} por dinero ($) o promoción`}
+            aria-label={`Abrir venta por dinero o promoción de ${producto.nombre}`}
+            className="flex min-h-[34px] w-full items-center justify-center gap-1 rounded-xl bg-lz-amber px-2.5 py-1 text-sm font-extrabold text-lz-surface shadow-lz-soft transition hover:bg-lz-amber-warm active:scale-[0.97]"
+          >
+            <span>$ / und</span>
+          </button>
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => onAgregar(producto)}
         aria-label={etiqueta}
-        className={`group relative flex min-h-[44px] w-full min-w-[44px] select-none flex-col overflow-hidden rounded-2xl bg-lz-surface p-2 text-left shadow-lz-card transition duration-100 hover:shadow-lz-float focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-lz-linen active:scale-[0.97] ${CLASES_TARJETA[modo]}`}
+        className="flex min-h-[44px] w-full min-w-[44px] flex-1 select-none flex-col p-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-lz-sage active:scale-[0.98]"
       >
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-lz-oat">
           <ImagenProducto nombre={producto.nombre} imagenUrl={producto.imagenUrl} />
@@ -75,24 +94,24 @@ export function TarjetaProducto({
           )}
         </div>
 
-        <span className="mt-2 line-clamp-2 min-h-[2.5rem] px-1 text-sm font-semibold leading-5 text-lz-charcoal">
+        <span className="mt-1.5 line-clamp-2 min-h-[2.5rem] px-0.5 text-sm font-semibold leading-5 text-lz-charcoal">
           {producto.nombre}
         </span>
 
         {autoconsumo ? (
-          <span className="mt-auto flex items-center justify-end gap-2 px-1 pb-0.5 pt-1">
+          <span className="mt-auto flex items-center justify-end gap-1 px-0.5 pb-0.5 pt-1">
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-amber text-xl font-bold leading-none text-lz-charcoal transition-colors group-hover:bg-lz-amber-warm"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-lz-amber text-lg font-bold leading-none text-lz-charcoal transition-colors group-hover:bg-lz-amber-warm"
               aria-hidden="true"
             >
               +
             </span>
           </span>
         ) : (
-          <span className="mt-auto flex items-center justify-between gap-2 px-1 pb-0.5 pt-1">
+          <span className="mt-auto flex items-center justify-between gap-1 px-0.5 pb-0.5 pt-1">
             <span className="truncate font-lz-display text-lg font-bold text-lz-sage-dark">{precio}</span>
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-lz-sage text-xl font-bold leading-none text-lz-surface transition-colors group-hover:bg-lz-sage-medium"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-lz-sage text-lg font-bold leading-none text-lz-surface transition-colors group-hover:bg-lz-sage-medium"
               aria-hidden="true"
             >
               +
@@ -100,21 +119,6 @@ export function TarjetaProducto({
           </span>
         )}
       </button>
-
-      {mostrarBotonPopup && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAbrirPorMonto?.(producto);
-          }}
-          title={`Vender ${producto.nombre} por dinero ($) o promoción`}
-          aria-label={`Abrir venta por dinero o promoción de ${producto.nombre}`}
-          className="absolute left-3.5 top-3.5 z-10 inline-flex min-h-[30px] items-center gap-1 rounded-xl border border-lz-surface/60 bg-lz-amber px-2.5 py-1 text-xs font-extrabold text-lz-surface shadow-lz-soft transition-transform hover:scale-105 hover:bg-lz-amber-warm active:scale-95"
-        >
-          <span>$ / und</span>
-        </button>
-      )}
     </div>
   );
 }

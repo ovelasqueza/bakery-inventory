@@ -7,10 +7,10 @@ export const LIMITES = { anchoMin: 320, anchoMax: 3840, altoMin: 480, altoMax: 2
 export const MEDIDAS = {
   encabezado: 96,
   barraMovil: 64,
-  padding: 16,
-  gap: 12,
-  tarjetaMin: 120,
-  tarjetaMax: 200,
+  padding: 12,
+  gap: 10,
+  tarjetaMin: 110,
+  tarjetaMax: 155,
   quiebre: 768,
 };
 
@@ -81,9 +81,9 @@ export type LayoutCaja = {
   cajonFlotante: { left: number; bottom: number; tamano: number; reserva: number };
 };
 
-const CARRITO_MIN = 300;
-const CARRITO_MAX = 420;
-const CARRITO_FRACCION = 0.3;
+const CARRITO_MIN = 240;
+const CARRITO_MAX = 340;
+const CARRITO_FRACCION = 0.24;
 const CARRITO_EXPANDIDO_FRACCION = 0.85;
 
 function clamp(valor: number, min: number, max: number): number {
