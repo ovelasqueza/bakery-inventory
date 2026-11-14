@@ -365,7 +365,14 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
               {/* Tiquete visual estilo papel térmico 80mm */}
               <div className="mx-auto w-full max-w-xs rounded-2xl border border-lz-border bg-white p-4 font-mono text-xs leading-relaxed text-lz-charcoal shadow-lz-soft">
                 <div className="text-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo-lizpan.png"
+                    alt="Logo Panadería Lizpan"
+                    className="mx-auto mb-1.5 h-16 w-auto object-contain"
+                  />
                   <p className="text-sm font-bold tracking-wide">{ENCABEZADO_RECIBO.nombre}</p>
+                  <p className="text-[11px] text-lz-charcoal-muted">{ENCABEZADO_RECIBO.nit}</p>
                   <p className="text-[11px] text-lz-charcoal-muted">{ENCABEZADO_RECIBO.linea2}</p>
                   <p className="mt-1 font-bold">Tiquete de venta</p>
                 </div>

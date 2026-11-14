@@ -3,6 +3,7 @@ import type { DatosRecibo } from '../api/recibo';
 import { diaLocal, fechaHora12, hora12 } from '../fechas/bogota';
 import { ENCABEZADO_RECIBO, MAX_BYTES_RECIBO } from './config';
 import { armarBytes } from './escpos';
+import { bytesLogoEscPos } from './logo';
 import {
   anchoDe,
   dineroRecibo,
@@ -66,6 +67,7 @@ function textoCantidad(n: number): string {
 function encabezado(): LineaRecibo[] {
   return [
     linea(ENCABEZADO_RECIBO.nombre, 'grande', 'centro'),
+    linea(ENCABEZADO_RECIBO.nit, 'normal', 'centro'),
     linea(ENCABEZADO_RECIBO.linea2, 'normal', 'centro'),
     linea(ENCABEZADO_RECIBO.titulo, 'negrita', 'centro'),
     linea(separador('=')),
@@ -226,14 +228,15 @@ export function lineasReciboCierre(
   ];
 }
 
-/** lineasReciboCierre + armarBytes; si supera MAX_BYTES_RECIBO baja los límites a la mitad hasta caber. */
+/** lineasReciboCierre + armarBytes (con logo); si supera MAX_BYTES_RECIBO baja los límites a la mitad hasta caber. */
 export function bytesReciboCierre(datos: DatosRecibo, ahora: Date): Uint8Array {
+  const logo = bytesLogoEscPos();
   let limites: LimitesRecibo = {
     gastos: datos.gastos.lista.length,
     productos: datos.productos.length,
   };
   for (;;) {
-    const bytes = armarBytes(lineasReciboCierre(datos, ahora, limites));
+    const bytes = armarBytes(lineasReciboCierre(datos, ahora, limites), logo);
     if (bytes.length <= MAX_BYTES_RECIBO) return bytes;
     if (limites.gastos === 0 && limites.productos === 0) return bytes;
     limites = { gastos: Math.floor(limites.gastos / 2), productos: Math.floor(limites.productos / 2) };

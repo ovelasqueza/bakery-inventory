@@ -4,6 +4,7 @@ import { imprimirEnAgente } from '@/lib/cajon';
 import { fechaHora12 } from '@/lib/fechas/bogota';
 import { ENCABEZADO_RECIBO } from './config';
 import { armarBytes } from './escpos';
+import { bytesLogoEscPos } from './logo';
 import type { ResultadoRecibo } from './imprimir';
 import {
   anchoDe,
@@ -32,6 +33,7 @@ export function lineasReciboVenta(datos: DetalleVenta, metodoNombre?: string | n
   const { venta, detalles } = datos;
   const lineas: LineaRecibo[] = [
     linea(ENCABEZADO_RECIBO.nombre, 'grande', 'centro'),
+    linea(ENCABEZADO_RECIBO.nit, 'normal', 'centro'),
     linea(ENCABEZADO_RECIBO.linea2, 'normal', 'centro'),
     linea('Tiquete de venta', 'negrita', 'centro'),
     linea(separador('=')),
@@ -71,7 +73,7 @@ export function lineasReciboVenta(datos: DetalleVenta, metodoNombre?: string | n
 }
 
 export function bytesReciboVenta(datos: DetalleVenta, metodoNombre?: string | null): Uint8Array {
-  return armarBytes(lineasReciboVenta(datos, metodoNombre));
+  return armarBytes(lineasReciboVenta(datos, metodoNombre), bytesLogoEscPos());
 }
 
 /**

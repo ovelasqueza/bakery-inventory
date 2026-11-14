@@ -75,10 +75,11 @@ describe('lineasReciboCierre', () => {
   });
 
   it('empieza con el encabezado centrado y sus estilos', () => {
-    const [a, b, c] = lineasReciboCierre(ejemplo(), AHORA);
+    const [a, b, c, d] = lineasReciboCierre(ejemplo(), AHORA);
     expect(a).toEqual({ texto: ENCABEZADO_RECIBO.nombre, estilo: 'grande', alineacion: 'centro' });
-    expect(b).toEqual({ texto: ENCABEZADO_RECIBO.linea2, estilo: 'normal', alineacion: 'centro' });
-    expect(c).toEqual({ texto: ENCABEZADO_RECIBO.titulo, estilo: 'negrita', alineacion: 'centro' });
+    expect(b).toEqual({ texto: ENCABEZADO_RECIBO.nit, estilo: 'normal', alineacion: 'centro' });
+    expect(c).toEqual({ texto: ENCABEZADO_RECIBO.linea2, estilo: 'normal', alineacion: 'centro' });
+    expect(d).toEqual({ texto: ENCABEZADO_RECIBO.titulo, estilo: 'negrita', alineacion: 'centro' });
   });
 
   it('muestra fecha, horas en 12 h y las secciones elementales en orden con saltos de línea', () => {

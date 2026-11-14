@@ -2,6 +2,7 @@
 
 export const ENCABEZADO_RECIBO = {
   nombre: 'PANADERIA LIZPAN',
+  nit: 'NIT 1144209114-4',
   linea2: 'Barrio Los Alcázares',
   titulo: 'Cierre de turno',
 };

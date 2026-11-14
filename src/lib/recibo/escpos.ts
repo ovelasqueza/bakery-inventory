@@ -82,9 +82,12 @@ export const CMD = {
 
 const LF = 0x0a;
 
-/** ESC @, ESC t 2, por línea: [ESC a][ESC !] texto LF [ESC ! 0 si tuvo estilo]; ESC d 4; GS V 66 0. */
-export function armarBytes(lineas: LineaRecibo[]): Uint8Array {
+/** ESC @, ESC t 2, [prefijo opcional], por línea: [ESC a][ESC !] texto LF [ESC ! 0 si tuvo estilo]; ESC d 4; GS V 66 0. */
+export function armarBytes(lineas: LineaRecibo[], prefijo?: Uint8Array): Uint8Array {
   const partes: number[] = [...CMD.iniciar, ...CMD.pagina(PAGINA_CODIGOS)];
+  if (prefijo) {
+    for (const b of prefijo) partes.push(b);
+  }
   for (const linea of lineas) {
     partes.push(...CMD.alinear(linea.alineacion), ...CMD.estilo(linea.estilo));
     for (const b of codificarPC850(linea.texto)) partes.push(b);
