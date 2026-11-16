@@ -3,10 +3,11 @@
 // Resultado del cierre a ciegas: quién cerró, hora, base que quedó y enviado a caja mayor (Req 1.6).
 // Al aparecer imprime el Recibo_Cierre una vez y permite reimprimirlo (Req 5.1-5.9).
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { useImprimirRecibo } from '@/hooks/caja/useImprimirRecibo';
 import type { Cierre } from '@/lib/api/turnos';
-import { hora12 } from '@/lib/fechas/bogota';
+import { diaLocal, hora12 } from '@/lib/fechas/bogota';
+import { esHoraResumenMariela, imprimirReciboMariela } from '@/lib/recibo/reciboDiaMariela';
 import { formatCurrency } from '@/lib/utils';
 
 interface ResultadoCierreProps {
@@ -20,10 +21,20 @@ interface ResultadoCierreProps {
 export function ResultadoCierre({ cierre, turnoId, onContinuar }: ResultadoCierreProps) {
   const idTitulo = useId();
   const { estado, mensaje, imprimir } = useImprimirRecibo(turnoId, true);
-  const imprimiendo = estado === 'imprimiendo';
+  const [imprimiendoMariela, setImprimiendoMariela] = useState(false);
+  const mostrarMariela = esHoraResumenMariela(cierre.cerradoEn);
+  const imprimiendo = estado === 'imprimiendo' || imprimiendoMariela;
   const textoEstado = imprimiendo ? 'Imprimiendo recibo…' : mensaje ?? '';
   const colorEstado =
     estado === 'listo' ? 'text-lz-sage-dark' : estado === 'fallo' ? 'text-lz-danger' : 'text-lz-charcoal-muted';
+
+  const reimprimirMariela = () => {
+    if (imprimiendo) return;
+    setImprimiendoMariela(true);
+    void imprimirReciboMariela(diaLocal(cierre.cerradoEn)).finally(() => {
+      setImprimiendoMariela(false);
+    });
+  };
 
   return (
     <div
@@ -64,6 +75,17 @@ export function ResultadoCierre({ cierre, turnoId, onContinuar }: ResultadoCierr
           >
             Imprimir recibo
           </button>
+
+          {mostrarMariela && (
+            <button
+              type="button"
+              onClick={reimprimirMariela}
+              disabled={imprimiendo}
+              className="min-h-[56px] w-full rounded-2xl border-2 border-lz-amber bg-lz-amber-light px-6 font-lz-display text-lg font-bold text-lz-charcoal transition-colors hover:bg-lz-amber/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-lz-amber focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Reimprimir resumen Doña Mariela
+            </button>
+          )}
 
           <button
             type="button"
