@@ -88,9 +88,10 @@ describe('lineasReciboCierre', () => {
     expect(t).toContain('Abrió: Ana');
     expect(t.find((x) => x.startsWith('Cerró: Ana'))?.endsWith('2:10 pm')).toBe(true);
     expect(t.find((x) => x.startsWith('Impreso:'))?.endsWith('2025-01-15 2:11 pm')).toBe(true);
-    const orden = ['VENTAS', 'GASTOS DEL TURNO', 'CUADRE DE CAJA', 'RESUMEN DE PRODUCTOS'].map((s) => t.indexOf(s));
+    const orden = ['VENTAS DEL TURNO', 'GASTOS DEL TURNO', 'CUADRE DE CAJA'].map((s) => t.indexOf(s));
     expect(orden.every((i) => i > 0)).toBe(true);
     expect([...orden].sort((x, y) => x - y)).toEqual(orden);
+    expect(t).not.toContain('RESUMEN DE PRODUCTOS');
     expect(t.filter((x) => x === '').length).toBeGreaterThanOrEqual(6);
   });
 
@@ -122,7 +123,7 @@ describe('lineasReciboCierre', () => {
 
   it('secciones vacías dicen "Sin movimientos" y diferencia cero muestra "Cuadre exacto"', () => {
     const t = textos(lineasReciboCierre(vacio(), AHORA));
-    expect(t.filter((x) => x === SIN_MOVIMIENTOS)).toHaveLength(3); // VENTAS, PRODUCTOS, GASTOS
+    expect(t.filter((x) => x === SIN_MOVIMIENTOS)).toHaveLength(2); // VENTAS DEL TURNO, GASTOS DEL TURNO
     expect(t.find((x) => x.startsWith('Cuadre exacto'))?.endsWith('$ 0')).toBe(true);
   });
 
@@ -140,9 +141,9 @@ describe('lineasReciboCierre', () => {
   });
 
   it('recorta listas con "... y K más"', () => {
-    const t = textos(lineasReciboCierre(ejemplo(), AHORA, { gastos: 1, productos: 2 }));
+    const t = textos(lineasReciboCierre(ejemplo(), AHORA, { gastos: 1 }));
     expect(t).toContain('... y 1 más');
-    expect(t.filter((x) => x.startsWith('... y'))).toEqual(['... y 1 más', '... y 1 más']);
+    expect(t.filter((x) => x.startsWith('... y'))).toEqual(['... y 1 más']);
   });
 
   it('discrimina los vales en efectivo dentro de GASTOS DEL TURNO y en CUADRE DE CAJA', () => {
@@ -174,13 +175,12 @@ describe('bytesReciboCierre', () => {
     expect(decodificarPC850(b)).not.toContain('... y');
   });
 
-  it('con 5.000 gastos y productos recorta hasta caber', () => {
+  it('con 5.000 gastos recorta hasta caber', () => {
     const d = ejemplo();
     d.gastos.lista = Array.from({ length: 5000 }, (_, i) => ({
       creadoEn: '2025-01-15T13:00:00Z', categoria: 'Insumos', concepto: `Gasto número ${i} con nombre largo`,
       valor: 1000, cajon: 1000, mayor: 0,
     }));
-    d.productos = Array.from({ length: 5000 }, (_, i) => ({ nombre: `Producto ${i} con nombre largo`, cantidad: 1, valor: 1000 }));
     const b = bytesReciboCierre(d, AHORA);
     expect(b.length).toBeLessThanOrEqual(MAX_BYTES_RECIBO);
     const texto = decodificarPC850(b);

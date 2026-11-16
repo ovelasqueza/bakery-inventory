@@ -19,7 +19,6 @@ import {
 /** Máximo de filas por lista antes de "... y K más". */
 export interface LimitesRecibo {
   gastos: number;
-  productos: number;
 }
 
 export const SIN_MOVIMIENTOS = 'Sin movimientos';
@@ -27,7 +26,7 @@ export const AVISO_AUTOCONSUMO = 'Valor de referencia, no es dinero';
 export const SUFIJO_CAJA_MAYOR = ' (Caja mayor)';
 export const SIN_DATO = '-';
 
-const SIN_LIMITE: LimitesRecibo = { gastos: Infinity, productos: Infinity };
+const SIN_LIMITE: LimitesRecibo = { gastos: Infinity };
 
 function largo(texto: string): number {
   return Array.from(texto.normalize('NFC')).length;
@@ -58,12 +57,6 @@ function lineaRecorte(omitidos: number): LineaRecibo {
   return linea(`... y ${omitidos} más`);
 }
 
-/** Cantidad sin decimales si es entera; si no, hasta 2 decimales con coma. */
-function textoCantidad(n: number): string {
-  if (Number.isInteger(n)) return String(n);
-  return n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
-}
-
 function encabezado(): LineaRecibo[] {
   return [
     linea(ENCABEZADO_RECIBO.nombre, 'grande', 'centro'),
@@ -85,7 +78,7 @@ function datosTurno(t: DatosRecibo['turno'], ahora: Date): LineaRecibo[] {
 }
 
 function seccionVentas(v: DatosRecibo['ventas']): LineaRecibo[] {
-  const filas: LineaRecibo[] = [titulo('VENTAS')];
+  const filas: LineaRecibo[] = [titulo('VENTAS DEL TURNO')];
   if (v.porMetodo.length === 0) {
     filas.push(linea(SIN_MOVIMIENTOS));
   } else {
@@ -95,31 +88,6 @@ function seccionVentas(v: DatosRecibo['ventas']): LineaRecibo[] {
   }
   filas.push(filaDinero('TOTAL VENTAS', v.total, 'negrita'));
   return filas;
-}
-
-/** Filas "cantidad nombre ... $ valor" con las cantidades alineadas, o "Sin movimientos". */
-function filasProductos(lista: DatosRecibo['productos'], limite: number): LineaRecibo[] {
-  if (lista.length === 0) return [linea(SIN_MOVIMIENTOS)];
-  const mostrados = lista.slice(0, limite);
-  const cantidades = mostrados.map((p) => textoCantidad(p.cantidad));
-  const ancho = Math.max(0, ...cantidades.map(largo));
-  const filas = mostrados.map((p, i) =>
-    filaDinero(`${cantidades[i].padStart(ancho)} ${limpio(p.nombre)}`, p.valor),
-  );
-  if (mostrados.length < lista.length) filas.push(lineaRecorte(lista.length - mostrados.length));
-  return filas;
-}
-
-function suma(lista: { valor: number }[]): number {
-  return lista.reduce((s, x) => s + x.valor, 0);
-}
-
-function seccionProductos(lista: DatosRecibo['productos'], limite: number): LineaRecibo[] {
-  return [
-    titulo('RESUMEN DE PRODUCTOS'),
-    ...filasProductos(lista, limite),
-    filaDinero('Total productos', suma(lista), 'negrita'),
-  ];
 }
 
 function esValeGasto(g: DatosRecibo['gastos']['lista'][number]): boolean {
@@ -201,10 +169,9 @@ function seccionCuadre(datos: DatosRecibo): LineaRecibo[] {
 /**
  * Lineas_Recibo organizadas con saltos de línea entre bloques:
  * 1. Encabezado y datos del turno
- * 2. VENTAS (Efectivo, QR/otros métodos y Total ventas)
+ * 2. VENTAS DEL TURNO (Efectivo, QR/otros métodos y Total ventas)
  * 3. GASTOS DEL TURNO
  * 4. CUADRE DE CAJA (Base, Ventas efectivo, Gastos, Esperado, Contado y Sobrante/Faltante)
- * 5. RESUMEN DE PRODUCTOS (al final)
  */
 export function lineasReciboCierre(
   datos: DatosRecibo,
@@ -221,8 +188,6 @@ export function lineasReciboCierre(
     ...seccionGastos(datos.gastos, limites.gastos),
     ...divisor(),
     ...seccionCuadre(datos),
-    ...divisor(),
-    ...seccionProductos(datos.productos, limites.productos),
     salto(),
     linea(separador('=')),
   ];
@@ -233,12 +198,11 @@ export function bytesReciboCierre(datos: DatosRecibo, ahora: Date): Uint8Array {
   const logo = bytesLogoEscPos();
   let limites: LimitesRecibo = {
     gastos: datos.gastos.lista.length,
-    productos: datos.productos.length,
   };
   for (;;) {
     const bytes = armarBytes(lineasReciboCierre(datos, ahora, limites), logo);
     if (bytes.length <= MAX_BYTES_RECIBO) return bytes;
-    if (limites.gastos === 0 && limites.productos === 0) return bytes;
-    limites = { gastos: Math.floor(limites.gastos / 2), productos: Math.floor(limites.productos / 2) };
+    if (limites.gastos === 0) return bytes;
+    limites = { gastos: Math.floor(limites.gastos / 2) };
   }
 }
