@@ -60,8 +60,9 @@ describe('tablasDeSeccion: columna Tipo en Ventas', () => {
     }),
   );
 
-  it('pantalla: después de Total en registradas y en anuladas', () => {
-    const [, registradas, anuladas] = tablasDeSeccion(r, 'ventas', 'pantalla');
+  it('pantalla: después de Total en registradas y en anuladas, y antecede el día de la semana en Ventas por día', () => {
+    const [porDia, registradas, anuladas] = tablasDeSeccion(r, 'ventas', 'pantalla');
+    expect(porDia.filas[0][0]).toBe('Sábado 2026-04-11');
     expect(registradas.columnas).toEqual(['Fecha y hora', 'Total', 'Tipo', 'Método de pago']);
     expect(registradas.filas[0][2]).toBe('Venta por valor');
     expect(anuladas.columnas[2]).toBe('Tipo');

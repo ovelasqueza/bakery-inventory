@@ -38,6 +38,33 @@ export function horaLocal(isoUtc: string | Date): string {
   return `${dos(l.getUTCHours())}:${dos(l.getUTCMinutes())}`;
 }
 
+/** Hora entera (0..23) en hora local de Bogotá. */
+export function horaNumeroLocal(isoUtc: string | Date): number {
+  return aLocal(isoUtc).getUTCHours();
+}
+
+/** Rango legible de una hora (ej. 6 → '6:00 am - 6:59 am', 14 → '2:00 pm - 2:59 pm'). */
+export function etiquetaRangoHora12(hora24: number): string {
+  const h = ((hora24 % 24) + 24) % 24;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const sufijo = h < 12 ? 'am' : 'pm';
+  return `${h12}:00 ${sufijo} - ${h12}:59 ${sufijo}`;
+}
+
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as const;
+
+/** Índice del día de la semana (0 = Domingo .. 6 = Sábado) para una fecha 'AAAA-MM-DD'. */
+export function indiceDiaSemana(dia: string): number {
+  const ms = diaAMs(dia);
+  if (ms === null) return 0;
+  return new Date(ms).getUTCDay();
+}
+
+/** Nombre del día de la semana ('Lunes'..'Domingo') para una fecha 'AAAA-MM-DD'. */
+export function nombreDiaSemana(dia: string): string {
+  return DIAS_SEMANA[indiceDiaSemana(dia)] ?? '';
+}
+
 /** 'h:mm am' / 'h:mm pm' en formato de 12 horas, hora de Bogotá (para mostrar en pantalla). */
 export function hora12(isoUtc: string | Date): string {
   const l = aLocal(isoUtc);

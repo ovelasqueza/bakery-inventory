@@ -26,8 +26,8 @@ interface BotonesExportarProps {
 }
 
 const claseBoton = cn(
-  'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-lz-border bg-lz-surface px-4 py-2',
-  'text-sm font-semibold text-lz-sage shadow-lz-soft transition-colors',
+  'inline-flex min-h-[38px] sm:min-h-[44px] items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-lz-border bg-lz-surface px-2.5 py-1.5 sm:px-4 sm:py-2',
+  'text-xs sm:text-sm font-semibold text-lz-sage shadow-lz-soft transition-colors',
   'hover:bg-lz-sage-light focus:outline-none focus-visible:ring-2 focus-visible:ring-lz-sage focus-visible:ring-offset-2',
   'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-lz-surface'
 );
@@ -62,7 +62,8 @@ export function BotonesExportar({ reporte, seccion, rango, vacio, className }: B
         aria-busy={generando === 'pdf'}
       >
         <IconoDescarga />
-        {generando === 'pdf' ? 'Generando PDF…' : 'Descargar PDF'}
+        <span className="sm:hidden">{generando === 'pdf' ? 'PDF…' : 'PDF'}</span>
+        <span className="hidden sm:inline">{generando === 'pdf' ? 'Generando PDF…' : 'Descargar PDF'}</span>
       </button>
       <button
         type="button"
@@ -72,7 +73,8 @@ export function BotonesExportar({ reporte, seccion, rango, vacio, className }: B
         aria-busy={generando === 'csv'}
       >
         <IconoDescarga />
-        {generando === 'csv' ? 'Generando CSV…' : 'Descargar CSV'}
+        <span className="sm:hidden">{generando === 'csv' ? 'CSV…' : 'CSV'}</span>
+        <span className="hidden sm:inline">{generando === 'csv' ? 'Generando CSV…' : 'Descargar CSV'}</span>
       </button>
     </div>
   );

@@ -16,7 +16,7 @@
 import { formatCurrency } from '@/lib/utils';
 import { textoProductos } from '../caja/autoconsumo';
 import { textoOrigen } from '../caja/cajaMayor';
-import { diaLocal } from '../fechas/bogota';
+import { diaLocal, etiquetaRangoHora12, horaNumeroLocal, nombreDiaSemana } from '../fechas/bogota';
 
 // ---------------------------------------------------------------------------
 // Datos de entrada (forma de `reporte_rango` en camelCase)
@@ -168,9 +168,30 @@ export type ResumenReporte = {
   neto: number;
 };
 
+export type FilaHoraPico = {
+  hora: number; // 0..23 en hora de Bogotá
+  etiqueta: string; // ej. '6:00 am - 6:59 am'
+  cantidad: number; // ventas registradas en esa hora
+  total: number; // valor vendido en esa hora
+  promedio: number; // promedio por venta en esa hora
+  porcentaje: number; // % del totalVendido (0..100, 1 decimal)
+};
+
+export type FilaBalanceDia = {
+  dia: string; // 'AAAA-MM-DD'
+  diaSemana: string; // 'Lunes'..'Domingo'
+  ventasTotal: number;
+  ventasCantidad: number;
+  gastosTotal: number;
+  gastosCantidad: number;
+  neto: number; // ventasTotal - gastosTotal
+};
+
 export type Reporte = {
   resumen: ResumenReporte;
   porDia: { dia: string; total: number; cantidad: number }[]; // dia asc
+  balancePorDia: FilaBalanceDia[]; // dia asc (ventas y gastos consolidados por día)
+  porHora: FilaHoraPico[]; // hora asc (con movimientos)
   ventas: VentaConMetodo[]; // registradas, más reciente primero
   anuladas: VentaConMetodo[]; // más reciente primero
   productos: ProductoVendido[]; // valor desc, nombre asc
@@ -312,6 +333,59 @@ export function construirReporte(d: DatosReporte): Reporte {
   }
   const porDia = Array.from(dias.values()).sort((a, b) => (a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0));
 
+  // Balance consolidado por día (ventas y gastos del día)
+  const balanceDias = new Map<string, FilaBalanceDia>();
+  const obtenerBalanceDia = (dia: string): FilaBalanceDia => {
+    const actual = balanceDias.get(dia);
+    if (actual) return actual;
+    const nuevo: FilaBalanceDia = {
+      dia,
+      diaSemana: nombreDiaSemana(dia),
+      ventasTotal: 0,
+      ventasCantidad: 0,
+      gastosTotal: 0,
+      gastosCantidad: 0,
+      neto: 0,
+    };
+    balanceDias.set(dia, nuevo);
+    return nuevo;
+  };
+  for (const v of registradas) {
+    const fila = obtenerBalanceDia(diaLocal(v.creadoEn));
+    fila.ventasTotal += v.total;
+    fila.ventasCantidad += 1;
+    fila.neto = fila.ventasTotal - fila.gastosTotal;
+  }
+  for (const g of d.gastos) {
+    const fila = obtenerBalanceDia(diaLocal(g.creadoEn));
+    fila.gastosTotal += g.valor;
+    fila.gastosCantidad += 1;
+    fila.neto = fila.ventasTotal - fila.gastosTotal;
+  }
+  const balancePorDia = Array.from(balanceDias.values()).sort((a, b) =>
+    a.dia < b.dia ? -1 : a.dia > b.dia ? 1 : 0,
+  );
+
+  // Horas pico de ventas (hora local de Bogotá 0..23)
+  const horasMap = new Map<number, { hora: number; cantidad: number; total: number }>();
+  for (const v of registradas) {
+    const h = horaNumeroLocal(v.creadoEn);
+    const fila = horasMap.get(h) ?? { hora: h, cantidad: 0, total: 0 };
+    fila.cantidad += 1;
+    fila.total += v.total;
+    horasMap.set(h, fila);
+  }
+  const porHora: FilaHoraPico[] = Array.from(horasMap.values())
+    .sort((a, b) => a.hora - b.hora)
+    .map((h) => ({
+      hora: h.hora,
+      etiqueta: etiquetaRangoHora12(h.hora),
+      cantidad: h.cantidad,
+      total: h.total,
+      promedio: h.cantidad === 0 ? 0 : Math.round(h.total / h.cantidad),
+      porcentaje: totalVendido === 0 ? 0 : Math.round((h.total / totalVendido) * 1000) / 10,
+    }));
+
   // Productos (Req 12.3); el grupo "Venta por valor" (productoId nulo) desempata como ''.
   const productos = d.productos
     .map((p) => ({ ...p }))
@@ -401,6 +475,8 @@ export function construirReporte(d: DatosReporte): Reporte {
   return {
     resumen,
     porDia,
+    balancePorDia,
+    porHora,
     ventas: registradas,
     anuladas,
     productos,

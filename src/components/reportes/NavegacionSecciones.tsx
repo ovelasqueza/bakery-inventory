@@ -5,8 +5,10 @@
 
 export type SeccionModulo =
   | 'resumen'
-  | 'ventas'
+  | 'balance-diario'
+  | 'horas-pico'
   | 'productos'
+  | 'ventas'
   | 'turnos'
   | 'gastos'
   | 'vales'
@@ -15,17 +17,19 @@ export type SeccionModulo =
   | 'caja-mayor'
   | 'configuracion';
 
-export const SECCIONES: { id: SeccionModulo; etiqueta: string }[] = [
+export const SECCIONES: { id: SeccionModulo; etiqueta: string; etiquetaCorta?: string }[] = [
   { id: 'resumen', etiqueta: 'Resumen' },
-  { id: 'ventas', etiqueta: 'Ventas' },
+  { id: 'balance-diario', etiqueta: 'Ventas y gastos por día', etiquetaCorta: 'Ventas / Gastos' },
+  { id: 'horas-pico', etiqueta: 'Horas pico', etiquetaCorta: 'Horas pico' },
   { id: 'productos', etiqueta: 'Productos' },
+  { id: 'ventas', etiqueta: 'Ventas' },
   { id: 'turnos', etiqueta: 'Turnos' },
   { id: 'gastos', etiqueta: 'Gastos' },
   { id: 'vales', etiqueta: 'Vales' },
-  { id: 'metodos', etiqueta: 'Métodos de pago' },
+  { id: 'metodos', etiqueta: 'Métodos de pago', etiquetaCorta: 'Métodos' },
   { id: 'autoconsumo', etiqueta: 'Autoconsumo' },
   { id: 'caja-mayor', etiqueta: 'Caja mayor' },
-  { id: 'configuracion', etiqueta: 'Configuración' },
+  { id: 'configuracion', etiqueta: 'Configuración', etiquetaCorta: 'Ajustes' },
 ];
 
 interface NavegacionSeccionesProps {
@@ -35,8 +39,11 @@ interface NavegacionSeccionesProps {
 
 export function NavegacionSecciones({ activa, onCambiar }: NavegacionSeccionesProps) {
   return (
-    <nav aria-label="Secciones de reportes" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <div role="tablist" className="flex w-max gap-2 pb-1">
+    <nav aria-label="Secciones de reportes">
+      <div
+        role="tablist"
+        className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2"
+      >
         {SECCIONES.map((s) => {
           const seleccionada = s.id === activa;
           return (
@@ -46,13 +53,14 @@ export function NavegacionSecciones({ activa, onCambiar }: NavegacionSeccionesPr
               role="tab"
               aria-selected={seleccionada}
               onClick={() => onCambiar(s.id)}
-              className={`min-h-[44px] min-w-[44px] whitespace-nowrap rounded-2xl border-2 px-4 text-sm font-semibold transition-colors ${
+              className={`min-h-[40px] rounded-xl border-2 px-2 py-1.5 text-center text-xs font-semibold leading-tight transition-colors sm:min-h-[44px] sm:rounded-2xl sm:px-4 sm:text-sm ${
                 seleccionada
-                  ? 'border-lz-sage bg-lz-sage text-lz-surface'
+                  ? 'border-lz-sage bg-lz-sage text-lz-surface shadow-lz-soft'
                   : 'border-lz-border bg-lz-surface text-lz-charcoal hover:border-lz-sage-medium hover:bg-lz-sage-light'
               }`}
             >
-              {s.etiqueta}
+              <span className="sm:hidden">{s.etiquetaCorta ?? s.etiqueta}</span>
+              <span className="hidden sm:inline">{s.etiqueta}</span>
             </button>
           );
         })}

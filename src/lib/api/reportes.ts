@@ -351,3 +351,67 @@ export async function obtenerReporte(rango: Rango): Promise<DatosReporte> {
     autoconsumos: (data.autoconsumos ?? []).map(aAutoconsumo),
   };
 }
+
+export interface LineaProductoCrudaRango {
+  venta_id: string;
+  producto_id: string | null;
+  cantidad: number;
+  subtotal: number;
+  ventas: { creado_en: string; estado: EstadoVenta } | { creado_en: string; estado: EstadoVenta }[] | null;
+}
+
+/**
+ * Obtiene todas las líneas vendidas de un producto específico dentro del rango [desde, hasta]
+ * (excluyendo ventas anuladas) para analizar qué días y a qué horas se vende más.
+ */
+export async function obtenerLineasProductoRango(
+  rango: Rango,
+  productoId: string | null,
+): Promise<{ ventaId: string; creadoEn: string; cantidad: number; subtotal: number }[]> {
+  const inicioIso = `${rango.desde}T00:00:00.000-05:00`;
+  const finIso = `${rango.hasta}T23:59:59.999-05:00`;
+
+  let q = supabase
+    .from('venta_detalles')
+    .select('venta_id, producto_id, cantidad, subtotal, ventas!inner(creado_en, estado)')
+    .eq('ventas.estado', 'registrada')
+    .gte('ventas.creado_en', inicioIso)
+    .lte('ventas.creado_en', finIso);
+
+  if (productoId === null) {
+    q = q.is('producto_id', null);
+  } else {
+    q = q.eq('producto_id', productoId);
+  }
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  const filas = (data ?? []) as unknown as LineaProductoCrudaRango[];
+  const resultado: { ventaId: string; creadoEn: string; cantidad: number; subtotal: number }[] = [];
+
+  for (const f of filas) {
+    const v = Array.isArray(f.ventas) ? f.ventas[0] : f.ventas;
+    if (!v || v.estado !== 'registrada') continue;
+    resultado.push({
+      ventaId: f.venta_id,
+      creadoEn: v.creado_en,
+      cantidad: Number(f.cantidad) || 0,
+      subtotal: Number(f.subtotal) || 0,
+    });
+  }
+
+  return resultado;
+}
+
+/** Lista de todos los productos vendibles del catálogo para el selector de análisis de productos. */
+export async function obtenerProductosCatalogoReporte(): Promise<{ id: string; nombre: string }[]> {
+  const { data, error } = await supabase
+    .from('productos')
+    .select('id, nombre')
+    .eq('activo', true)
+    .neq('tipo_producto', 'materia_prima')
+    .order('nombre', { ascending: true });
+  if (error || !data) return [];
+  return (data as { id: string; nombre: string }[]).map((p) => ({ id: p.id, nombre: p.nombre }));
+}

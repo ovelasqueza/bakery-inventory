@@ -14,7 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LogoLizpan } from '@/components/marca/LogoLizpan';
 import { obtenerReporte } from '@/lib/api/reportes';
 import { ErrorApp } from '@/lib/api/errores';
-import { atajoRango, type Rango } from '@/lib/fechas/bogota';
+import { atajoRango, nombreDiaSemana, type Rango } from '@/lib/fechas/bogota';
 import { construirReporte, type Reporte } from '@/lib/reportes/agregar';
 import { seccionVacia, type Seccion } from '@/lib/reportes/tablas';
 import { useGuardaPin } from './GuardaPin';
@@ -23,6 +23,8 @@ import { FiltroRango } from './FiltroRango';
 import { EstadoVacioReporte } from './EstadoVacioReporte';
 import { BotonesExportar } from './BotonesExportar';
 import { SeccionResumen } from './SeccionResumen';
+import { SeccionBalanceDiario } from './SeccionBalanceDiario';
+import { SeccionHorasPico } from './SeccionHorasPico';
 import { SeccionVentas } from './SeccionVentas';
 import { SeccionProductos } from './SeccionProductos';
 import { SeccionTurnos } from './SeccionTurnos';
@@ -37,6 +39,8 @@ import { SeccionVales } from './SeccionVales';
 function esSeccionReporte(s: SeccionModulo): s is Seccion {
   switch (s) {
     case 'resumen':
+    case 'balance-diario':
+    case 'horas-pico':
     case 'ventas':
     case 'productos':
     case 'turnos':
@@ -86,7 +90,8 @@ function mensajeError(error: unknown): string {
 
 function formatearDia(dia: string): string {
   const [a, m, d] = dia.split('-');
-  return `${d}/${m}/${a}`;
+  const nombre = nombreDiaSemana(dia);
+  return nombre ? `${nombre} ${d}/${m}/${a}` : `${d}/${m}/${a}`;
 }
 
 function textoRango(r: Rango): string {
@@ -94,7 +99,7 @@ function textoRango(r: Rango): string {
 }
 
 const claseEnlace =
-  'inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lz-sage focus-visible:ring-offset-2';
+  'inline-flex min-h-[38px] sm:min-h-[44px] items-center justify-center rounded-xl px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-lz-sage focus-visible:ring-offset-2';
 
 export function ModuloReportes() {
   const { revisarAcceso } = useGuardaPin();
@@ -156,17 +161,19 @@ export function ModuloReportes() {
   return (
     <div className="min-h-screen bg-lz-linen font-lz-sans text-lz-charcoal">
       <header className="border-b border-lz-border bg-lz-surface shadow-lz-soft">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <LogoLizpan alto={80} />
-            <h1 className="font-lz-display text-xl font-bold text-lz-charcoal sm:text-2xl">Reportes</h1>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <LogoLizpan alto={56} className="sm:hidden" />
+            <LogoLizpan alto={76} className="hidden sm:block" />
+            <h1 className="font-lz-display text-lg font-bold text-lz-charcoal sm:text-2xl">Reportes</h1>
           </div>
-          <nav aria-label="Navegación" className="flex flex-wrap gap-2">
+          <nav aria-label="Navegación" className="flex items-center gap-1.5 sm:gap-2">
             <Link
               href="/admin"
               className={`${claseEnlace} border border-lz-border bg-lz-surface text-lz-charcoal hover:bg-lz-sage-light`}
             >
-              Administración
+              <span className="sm:hidden">Admin</span>
+              <span className="hidden sm:inline">Administración</span>
             </Link>
             <Link href="/caja" className={`${claseEnlace} bg-lz-sage text-lz-surface hover:bg-lz-sage-dark`}>
               Ir a Caja
@@ -175,18 +182,18 @@ export function ModuloReportes() {
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 sm:py-6">
+      <main className="mx-auto flex max-w-6xl flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-4 sm:py-6">
         <NavegacionSecciones activa={seccion} onCambiar={setSeccion} />
 
         {usaRango && <FiltroRango rango={rango} onAplicar={aplicarRango} />}
 
-        <section aria-labelledby="lz-seccion-titulo" className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section aria-labelledby="lz-seccion-titulo" className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-lz-border bg-lz-surface px-3.5 py-2.5 shadow-lz-soft sm:px-4 sm:py-3">
             <div className="flex flex-col">
-              <h2 id="lz-seccion-titulo" className="font-lz-display text-lg font-bold text-lz-charcoal sm:text-xl">
+              <h2 id="lz-seccion-titulo" className="font-lz-display text-base font-bold text-lz-charcoal sm:text-xl">
                 {etiqueta}
               </h2>
-              {usaRango && <p className="text-sm text-lz-charcoal-muted">{textoRango(rango)}</p>}
+              {usaRango && <p className="text-xs text-lz-charcoal-muted sm:text-sm">{textoRango(rango)}</p>}
             </div>
             {esSeccionReporte(seccion) && (
               <BotonesExportar
@@ -202,6 +209,7 @@ export function ModuloReportes() {
             <ContenidoReporte
               seccion={seccion}
               reporte={reporte}
+              rango={rango}
               cargando={estado.cargando}
               error={estado.error}
               onReintentar={() => void cargar(rango)}
@@ -222,12 +230,13 @@ export function ModuloReportes() {
 interface ContenidoReporteProps {
   seccion: Seccion;
   reporte: Reporte | null;
+  rango: Rango;
   cargando: boolean;
   error: string | null;
   onReintentar: () => void;
 }
 
-function ContenidoReporte({ seccion, reporte, cargando, error, onReintentar }: ContenidoReporteProps) {
+function ContenidoReporte({ seccion, reporte, rango, cargando, error, onReintentar }: ContenidoReporteProps) {
   if (error) {
     return (
       <div
@@ -269,6 +278,11 @@ function ContenidoReporte({ seccion, reporte, cargando, error, onReintentar }: C
     return <SeccionGastos reporte={reporte} onCambio={onReintentar} />;
   }
 
+  // En Productos siempre se muestra SeccionProductos para permitir elegir un producto del catálogo
+  if (seccion === 'productos') {
+    return <SeccionProductos reporte={reporte} rango={rango} />;
+  }
+
   // Req 12.10: Turnos puede seguir mostrando turnos abiertos sin ventas ni gastos
   // (seccionVacia nunca la considera vacía). Autoconsumo: barra-acciones-caja Req 12.6.
   if (seccionVacia(reporte, seccion)) return <EstadoVacioReporte />;
@@ -276,10 +290,12 @@ function ContenidoReporte({ seccion, reporte, cargando, error, onReintentar }: C
   switch (seccion) {
     case 'resumen':
       return <SeccionResumen reporte={reporte} />;
+    case 'balance-diario':
+      return <SeccionBalanceDiario reporte={reporte} />;
+    case 'horas-pico':
+      return <SeccionHorasPico reporte={reporte} />;
     case 'ventas':
       return <SeccionVentas reporte={reporte} />;
-    case 'productos':
-      return <SeccionProductos reporte={reporte} />;
     case 'turnos':
       return <SeccionTurnos reporte={reporte} />;
     case 'metodos':

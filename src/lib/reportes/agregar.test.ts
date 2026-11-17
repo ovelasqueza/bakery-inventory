@@ -134,3 +134,63 @@ describe('construirReporte: autoconsumo', () => {
     expect(r.autoconsumo).toEqual({ registros: [], porProducto: [], porPersona: [], total: 0 });
   });
 });
+
+describe('construirReporte: balancePorDia y porHora', () => {
+  it('consolida ventas y gastos por día y calcula horas pico en Bogotá', () => {
+    const r = construirReporte(
+      datos({
+        ventas: [
+          // 2026-04-11 11:30 UTC = 6:30 am Bogotá (Sábado)
+          venta({ id: 'v1', creadoEn: '2026-04-11T11:30:00Z', total: 12000 }),
+          // 2026-04-11 11:45 UTC = 6:45 am Bogotá (Sábado)
+          venta({ id: 'v2', creadoEn: '2026-04-11T11:45:00Z', total: 8000 }),
+          // 2026-04-11 21:10 UTC = 4:10 pm Bogotá (Sábado)
+          venta({ id: 'v3', creadoEn: '2026-04-11T21:10:00Z', total: 5000 }),
+        ],
+        gastos: [
+          {
+            id: 'g1',
+            creadoEn: '2026-04-11T15:00:00Z',
+            valor: 7000,
+            concepto: 'Harina',
+            categoriaGastoId: 'c1',
+            registradoPor: 'Ana',
+            turnoId: 't1',
+            origenes: [],
+          },
+        ],
+      }),
+    );
+
+    expect(r.balancePorDia).toEqual([
+      {
+        dia: '2026-04-11',
+        diaSemana: 'Sábado',
+        ventasTotal: 25000,
+        ventasCantidad: 3,
+        gastosTotal: 7000,
+        gastosCantidad: 1,
+        neto: 18000,
+      },
+    ]);
+
+    expect(r.porHora).toEqual([
+      {
+        hora: 6,
+        etiqueta: '6:00 am - 6:59 am',
+        cantidad: 2,
+        total: 20000,
+        promedio: 10000,
+        porcentaje: 80,
+      },
+      {
+        hora: 16,
+        etiqueta: '4:00 pm - 4:59 pm',
+        cantidad: 1,
+        total: 5000,
+        promedio: 5000,
+        porcentaje: 20,
+      },
+    ]);
+  });
+});

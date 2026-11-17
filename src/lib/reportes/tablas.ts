@@ -16,13 +16,22 @@
  */
 
 import { formatCurrency } from '@/lib/utils';
-import { fechaHora12, fechaHoraLocal, type Rango } from '../fechas/bogota';
+import { fechaHora12, fechaHoraLocal, nombreDiaSemana, type Rango } from '../fechas/bogota';
 import type { Celda } from './csv';
 import type { Reporte, VentaConMetodo } from './agregar';
 
 export type { Celda } from './csv';
 
-export type Seccion = 'resumen' | 'ventas' | 'productos' | 'turnos' | 'gastos' | 'metodos' | 'autoconsumo';
+export type Seccion =
+  | 'resumen'
+  | 'balance-diario'
+  | 'horas-pico'
+  | 'ventas'
+  | 'productos'
+  | 'turnos'
+  | 'gastos'
+  | 'metodos'
+  | 'autoconsumo';
 
 export type Tabla = { titulo: string; columnas: string[]; filas: Celda[][] };
 
@@ -89,7 +98,7 @@ function ventas(r: Reporte, f: Formato): Tabla[] {
     {
       titulo: 'Ventas por día',
       columnas: ['Día', 'Total', 'Ventas'],
-      filas: r.porDia.map((d) => [d.dia, monto(d.total, f), d.cantidad]),
+      filas: r.porDia.map((d) => [`${nombreDiaSemana(d.dia)} ${d.dia}`, monto(d.total, f), d.cantidad]),
     },
     {
       titulo: 'Ventas registradas',
@@ -237,6 +246,39 @@ function autoconsumo(r: Reporte, f: Formato): Tabla[] {
   ];
 }
 
+function balanceDiario(r: Reporte, f: Formato): Tabla[] {
+  return [
+    {
+      titulo: 'Ventas y gastos por día',
+      columnas: ['Fecha', 'N.º ventas', 'Total ventas', 'N.º gastos', 'Total gastos', 'Balance neto'],
+      filas: r.balancePorDia.map((d) => [
+        `${d.diaSemana} ${d.dia}`,
+        d.ventasCantidad,
+        monto(d.ventasTotal, f),
+        d.gastosCantidad,
+        monto(d.gastosTotal, f),
+        monto(d.neto, f),
+      ]),
+    },
+  ];
+}
+
+function horasPico(r: Reporte, f: Formato): Tabla[] {
+  return [
+    {
+      titulo: 'Ventas por hora del día',
+      columnas: ['Hora', 'Ventas', 'Total vendido', 'Promedio por venta', '% del total'],
+      filas: r.porHora.map((h) => [
+        h.etiqueta,
+        h.cantidad,
+        monto(h.total, f),
+        monto(h.promedio, f),
+        f === 'csv' ? h.porcentaje : `${h.porcentaje}%`,
+      ]),
+    },
+  ];
+}
+
 /**
  * Si la sección no tiene datos que mostrar ni exportar (Req 12.6, 12.10).
  * Autoconsumo mira solo sus registros; Turnos nunca está vacía (puede mostrar
@@ -244,6 +286,8 @@ function autoconsumo(r: Reporte, f: Formato): Tabla[] {
  */
 export function seccionVacia(r: Reporte, s: Seccion): boolean {
   if (s === 'autoconsumo') return r.autoconsumo.registros.length === 0;
+  if (s === 'horas-pico') return r.porHora.length === 0;
+  if (s === 'balance-diario') return r.balancePorDia.length === 0;
   if (s === 'turnos') return false;
   return r.vacio;
 }
@@ -252,6 +296,10 @@ export function tablasDeSeccion(r: Reporte, s: Seccion, formato: Formato): Tabla
   switch (s) {
     case 'resumen':
       return resumen(r, formato);
+    case 'balance-diario':
+      return balanceDiario(r, formato);
+    case 'horas-pico':
+      return horasPico(r, formato);
     case 'ventas':
       return ventas(r, formato);
     case 'productos':

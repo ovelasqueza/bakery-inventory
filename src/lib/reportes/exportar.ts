@@ -23,6 +23,8 @@ import { nombreArchivo, tablasDeSeccion, type Seccion } from './tablas';
 
 const TITULO_SECCION: Record<Seccion, string> = {
   resumen: 'Resumen',
+  'balance-diario': 'Ventas y gastos por día',
+  'horas-pico': 'Horas pico de ventas',
   ventas: 'Ventas',
   productos: 'Productos',
   turnos: 'Turnos',

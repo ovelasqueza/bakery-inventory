@@ -1,7 +1,8 @@
 'use client';
 
 // Una Tabla de `tablasDeSeccion(..., 'pantalla')`: título, encabezado y filas.
-// La pantalla muestra las mismas columnas y filas que el PDF y el CSV (Req 13.5).
+// En pantallas pequeñas (móvil), las tablas anchas (4+ columnas) se muestran también
+// como tarjetas compactas fáciles de leer sin desplazarse horizontalmente.
 
 import { useId, type ReactNode } from 'react';
 import type { Celda, Tabla } from '@/lib/reportes/tablas';
@@ -9,7 +10,7 @@ import type { Celda, Tabla } from '@/lib/reportes/tablas';
 export const TEXTO_SIN_REGISTROS = 'Sin registros';
 
 // Números y montos con `formatCurrency` ("$ 1.234", "-$ 1.234"); no fechas ni textos.
-const PATRON_NUMERICO = /^-?\s*\$?\s*-?\d[\d.,]*$/;
+const PATRON_NUMERICO = /^-?\s*\$?\s*-?\d[\d.,]*%?$/;
 
 export function esNumerica(celda: Celda): boolean {
   if (typeof celda === 'number') return true;
@@ -35,30 +36,100 @@ export function TablaReporte({
 }: TablaReporteProps) {
   const idTitulo = useId();
   const totalColumnas = tabla.columnas.length + (onSeleccionar ? 1 : 0);
+  const usarTarjetasMovil = tabla.columnas.length >= 4;
 
   return (
     <section
       aria-labelledby={idTitulo}
-      className="flex flex-col gap-2 rounded-2xl border border-lz-border bg-lz-surface p-4 shadow-lz-soft"
+      className="flex flex-col gap-2.5 rounded-2xl border border-lz-border bg-lz-surface p-3.5 shadow-lz-soft sm:p-4"
     >
-      <h3 id={idTitulo} className="font-lz-display text-base font-semibold text-lz-charcoal">
-        {tabla.titulo}
-      </h3>
-      <div className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-max border-collapse text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <h3 id={idTitulo} className="font-lz-display text-base font-semibold text-lz-charcoal">
+          {tabla.titulo}
+        </h3>
+        {tabla.filas.length > 0 && (
+          <span className="rounded-lg bg-lz-linen px-2 py-0.5 text-xs font-medium text-lz-charcoal-muted">
+            {tabla.filas.length} {tabla.filas.length === 1 ? 'registro' : 'registros'}
+          </span>
+        )}
+      </div>
+
+      {/* Vista móvil en tarjetas para tablas anchas (4 o más columnas) */}
+      {usarTarjetasMovil && (
+        <div className="flex flex-col gap-2 sm:hidden">
+          {tabla.filas.length === 0 ? (
+            <p className="py-4 text-center text-sm text-lz-charcoal-muted">{TEXTO_SIN_REGISTROS}</p>
+          ) : (
+            tabla.filas.map((fila, f) => {
+              const activa = seleccionada === f;
+              return (
+                <div
+                  key={f}
+                  className={`flex flex-col gap-2 rounded-xl border p-3 ${
+                    activa
+                      ? 'border-lz-sage bg-lz-sage-light'
+                      : 'border-lz-border bg-lz-linen/50'
+                  }`}
+                >
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                    {fila.map((celda, c) => {
+                      const colNombre = tabla.columnas[c] ?? '';
+                      const contenido = renderCelda ? renderCelda(celda, f, c) : (celda ?? '-');
+                      const numerica = esNumerica(celda);
+                      return (
+                        <div key={c} className="flex flex-col">
+                          <span className="text-[11px] font-medium text-lz-charcoal-muted">
+                            {colNombre}
+                          </span>
+                          <span
+                            className={`font-semibold text-lz-charcoal ${
+                              numerica ? 'font-lz-display tabular-nums' : 'break-words'
+                            }`}
+                          >
+                            {contenido === '' || contenido === null ? '-' : contenido}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {onSeleccionar && (
+                    <button
+                      type="button"
+                      aria-pressed={activa}
+                      onClick={() => onSeleccionar(f)}
+                      className={`mt-1 min-h-[38px] w-full rounded-xl border-2 px-3 text-xs font-semibold transition-colors ${
+                        activa
+                          ? 'border-lz-sage bg-lz-sage text-lz-surface'
+                          : 'border-lz-border bg-lz-surface text-lz-charcoal hover:bg-lz-sage-light'
+                      }`}
+                    >
+                      {etiquetaSeleccionar}
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Tabla estándar (siempre en escritorio y en móvil para tablas de 2–3 columnas) */}
+      <div className={`${usarTarjetasMovil ? 'hidden sm:block' : 'block'} -mx-3.5 overflow-x-auto px-3.5 sm:-mx-4 sm:px-4`}>
+        <table className="w-full border-collapse text-xs sm:min-w-max sm:text-sm">
           <thead>
             <tr className="border-b-2 border-lz-border">
               {tabla.columnas.map((c, i) => (
                 <th
                   key={`${i}-${c}`}
                   scope="col"
-                  className="whitespace-nowrap px-3 py-2 text-left font-semibold text-lz-charcoal-muted"
+                  className="whitespace-nowrap px-2 py-2 text-left font-semibold text-lz-charcoal-muted sm:px-3"
                 >
                   {c}
                 </th>
               ))}
               {onSeleccionar && (
-                <th scope="col" className="px-3 py-2">
+                <th scope="col" className="px-2 py-2 sm:px-3">
                   <span className="sr-only">Acciones</span>
                 </th>
               )}
@@ -84,8 +155,8 @@ export function TablaReporte({
                       return (
                         <td
                           key={c}
-                          className={`whitespace-nowrap px-3 py-2 text-lz-charcoal ${
-                            numerica ? 'text-right font-lz-display tabular-nums' : 'text-left'
+                          className={`px-2 py-2 text-lz-charcoal sm:whitespace-nowrap sm:px-3 ${
+                            numerica ? 'whitespace-nowrap text-right font-lz-display tabular-nums' : 'text-left'
                           }`}
                         >
                           {renderCelda ? renderCelda(celda, f, c) : (celda ?? '')}
@@ -93,12 +164,12 @@ export function TablaReporte({
                       );
                     })}
                     {onSeleccionar && (
-                      <td className="px-3 py-1 text-right">
+                      <td className="px-2 py-1 text-right sm:px-3">
                         <button
                           type="button"
                           aria-pressed={activa}
                           onClick={() => onSeleccionar(f)}
-                          className={`min-h-[44px] min-w-[44px] whitespace-nowrap rounded-2xl border-2 px-3 text-sm font-semibold transition-colors ${
+                          className={`min-h-[36px] whitespace-nowrap rounded-xl border-2 px-2.5 text-xs font-semibold transition-colors sm:min-h-[40px] sm:rounded-2xl sm:px-3 sm:text-sm ${
                             activa
                               ? 'border-lz-sage bg-lz-sage text-lz-surface'
                               : 'border-lz-border bg-lz-surface text-lz-charcoal hover:border-lz-sage-medium hover:bg-lz-sage-light'
