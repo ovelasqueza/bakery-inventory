@@ -367,7 +367,7 @@ export function ListaVentasTurno({ turnoId, personas, onCambio, onTurnoCerrado, 
                 <div className="text-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/logo-lizpan.png"
+                    src="/logo-lizpan-termico.png"
                     alt="Logo Panadería Lizpan"
                     className="mx-auto mb-1.5 h-16 w-auto object-contain"
                   />
